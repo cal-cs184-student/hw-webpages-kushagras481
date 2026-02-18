@@ -31,7 +31,7 @@
     <body>
         <div class="container">
             <h1>CS184/284A Spring 2025 Homework 1 Write-Up</h1>
-            <div style="text-align: center">Names:</div>
+            <div style="text-align: center">Names: Kushagra Srivastava</div>
 
             <br />
 
@@ -67,13 +67,85 @@
             I rasterized each triangle by first finding the smallest
             axis-aligned bounding box that contains the three vertices, clamping
             that box to valid screen coordinates, then exiting if the box is
-            empty or the triangle is degenerate. Then, for each pixel center (x
-            + 0.5, y + 0.5) inside that box, I evaluated using the 3-line test
+            empty or the triangle is degenerate. Then, for each pixel center `(x
+            + 0.5, y + 0.5)` inside that box, I evaluated using the 3-line test
             and fill the pixel if the three edge values share the same sign,
             including boundary points. This is no worse than a method checking
             each sample in the triangle's bounding box because it uses the same
             candidate set and does constant-work time per sample. So runtime
-            wise, it is O(#samples in bounding box). 2.
+            wise, it is `O(#samples in bounding box)`.
+
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-17_22-56-10.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                <code>basic/test4.svg</code> at sample rate 1.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-17_22-56-20.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                <code>basic/test4.svg</code> at sample rate 4.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-17_22-56-26.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                <code>basic/test4.svg</code> at sample rate 16.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h2>Task 2: Antialiasing by Supersampling</h2>
+            I implemented supersampling by storing multiple color samples per
+            pixel in `sample_buffer` (so the buffer has `width * height *
+            sample_rate` entries) and thinking of each pixel as a small
+            `sqrt(sample_rate) x sqrt(sample_rate)` grid of subpixels. When
+            rasterizing a triangle, I still loop over its pixel-space bounding
+            box, but instead of testing only the pixel center, I test every
+            subpixel center with the same 3-edge inside test and color only the
+            subsamples that fall inside the triangle. This matters because
+            aliasing happens when a sharp edge is represented by just one sample
+            per pixel; with supersampling, edge pixels can be partially covered,
+            and averaging those subsamples gives smoother boundaries. I also
+            updated the pipeline so it actually supports this: `fill_pixel` now
+            writes to all subsamples of a pixel (so points/lines still show up
+            correctly), `set_sample_rate` and `set_framebuffer_target` resize
+            the sample buffer when resolution or sampling changes, and
+            `resolve_to_framebuffer` averages each pixel’s subsamples into the
+            final 8-bit framebuffer color. Comparing sample rates 1, 4, and 16
+            on `basic/test4.svg`, the biggest difference appears along thin,
+            slanted triangle corners: rate 1 shows clear stair-step aliasing,
+            while 4 and especially 16 produce much smoother edges. In the pixel
+            inspector, this happens because higher supersampling captures
+            partial triangle coverage within a pixel, so edge pixels get
+            averaged intermediate colors instead of flipping directly between
+            fully inside and fully outside.
 
             <div
                 style="
@@ -114,15 +186,6 @@
                     </tr>
                 </table>
             </div>
-
-            <h2>Task 2: Antialiasing by Supersampling</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
 
             <h2>Task 3: Transforms</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
