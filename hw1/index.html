@@ -64,20 +64,17 @@
             what interesting things you've learned from completing the homework.
 
             <h2>Task 1: Drawing Single-Color Triangles</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+            I rasterized each triangle by first finding the smallest
+            axis-aligned bounding box that contains the three vertices, clamping
+            that box to valid screen coordinates, then exiting if the box is
+            empty or the triangle is degenerate. Then, for each pixel center (x
+            + 0.5, y + 0.5) inside that box, I evaluated using the 3-line test
+            and fill the pixel if the three edge values share the same sign,
+            including boundary points. This is no worse than a method checking
+            each sample in the triangle's bounding box because it uses the same
+            candidate set and does constant-work time per sample. So runtime
+            wise, it is O(#samples in bounding box). 2.
 
-            <p>
-                Here is an example 2x2 gridlike structure using an HTML table.
-                Each <b>tr</b> is a row and each <b>td</b> is a column in that
-                row. You might find this useful for framing and showing your
-                result images in an organized fashion.
-            </p>
             <div
                 style="
                     display: flex;
@@ -94,22 +91,25 @@
                 >
                     <tr>
                         <td style="text-align: center">
-                            <img src="lion.jpg" width="400px" />
-                            <figcaption>Caption goes here.</figcaption>
+                            <img
+                                src="screenshot_2-17_20-6-35.png"
+                                width="400px"
+                            />
+                            <figcaption>
+                                <code>basic/test4.svg</code> with default
+                                viewing parameters.
+                            </figcaption>
                         </td>
                         <td style="text-align: center">
-                            <img src="lion.jpg" width="400px" />
-                            <figcaption>Caption goes here.</figcaption>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: center">
-                            <img src="lion.jpg" width="400px" />
-                            <figcaption>Caption goes here.</figcaption>
-                        </td>
-                        <td style="text-align: center">
-                            <img src="lion.jpg" width="400px" />
-                            <figcaption>Caption goes here.</figcaption>
+                            <img
+                                src="screenshot_2-17_20-7-42.png"
+                                width="400px"
+                            />
+                            <figcaption>
+                                <code>basic/test4.svg</code> with pixel
+                                inspector centered on an interesting part of the
+                                scene.
+                            </figcaption>
                         </td>
                     </tr>
                 </table>
