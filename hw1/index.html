@@ -351,43 +351,76 @@
             </div>
 
             <h2>Task 6: "Level Sampling" with mipmaps for texture mapping</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+            Level sampling solves texture aliasing that occurs when a single
+            screen pixel maps to a large region of texture space, causing
+            artifacts like moiré patterns. The solution is to precompute a
+            mipmap, a pyramid of progressively lower-resolution versions of the
+            texture. In my implementation, for each sample I compute UV
+            coordinates at neighboring screen points, take the difference
+            vectors, scale them to texel space, and use <code>log2</code> of the
+            largest footprint length to select the appropriate mip level.
+            <code>L_NEAREST</code> rounds to the closest level while
+            <code>L_LINEAR</code> interpolates between two bracketing levels for
+            smoother transitions. In terms of tradeoffs across all three
+            techniques, supersampling is the strongest antialiaser since it
+            handles geometry edges, texture, and color, but it scales memory and
+            render time linearly with sample count.
+            <code>P_LINEAR</code> (bilinear pixel sampling) is lightweight with
+            minimal memory overhead, smoothing within a mip level at the cost of
+            just four texture fetches per sample instead of one. Level sampling
+            sits in the middle, requiring about <code>33%</code> extra memory
+            for the mipmap but handling minification aliasing well at a modest
+            performance cost, with trilinear filtering adding only a small extra
+            cost to eliminate visible seams between mip levels.
 
-            <h2>(Optional) Task 7: Extra Credit - Draw Something Creative!</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
-
-            <h2>Additional Notes (please remove)</h2>
-            <ul>
-                <li>
-                    You can also add code if you'd like as so:
-                    <code>code code code</code>
-                </li>
-                <li>
-                    If you'd like to add math equations,
-                    <ul>
-                        <li>
-                            You can write inline equations like so: \( a^2 + b^2
-                            = c^2 \)
-                        </li>
-                        <li>
-                            You can write display equations like so: \[ a^2 +
-                            b^2 = c^2 \]
-                        </li>
-                    </ul>
-                </li>
-            </ul>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_21-36-8.png"
+                                width="300px"
+                            />
+                            <figcaption>L_ZERO and P_NEAREST</figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_21-36-16.png"
+                                width="300px"
+                            />
+                            <figcaption>L_ZERO and P_LINEAR</figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_21-36-24.png"
+                                width="300px"
+                            />
+                            <figcaption>L_NEAREST and P_NEAREST</figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_21-36-29.png"
+                                width="300px"
+                            />
+                            <figcaption>L_NEAREST and P_LINEAR</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </body>
 </html>
