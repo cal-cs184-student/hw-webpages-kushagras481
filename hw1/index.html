@@ -59,9 +59,15 @@
 		-->
 
             <h2>Overview</h2>
-            Give a high-level overview of what you implemented in this homework.
-            Think about what you've built as a whole. Share your thoughts on
-            what interesting things you've learned from completing the homework.
+            This homework felt like building a small graphics pipeline step by
+            step: drawing triangles, improving quality with supersampling, then
+            adding transforms, barycentric interpolation, texture sampling, and
+            mipmap level sampling. I approached each part incrementally, testing
+            visuals after every change before moving on. The main challenge was
+            keeping coordinate and sampling logic consistent, since small
+            mistakes caused visible artifacts. The biggest takeaway was how much
+            image quality depends on many small implementation details across
+            the whole pipeline.
 
             <h2>Task 1: Drawing Single-Color Triangles</h2>
             I rasterized each triangle by first finding the smallest
