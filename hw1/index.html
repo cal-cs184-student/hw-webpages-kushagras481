@@ -350,28 +350,27 @@
                 </table>
             </div>
 
-            <h2>Task 6: "Level Sampling" with mipmaps for texture mapping</h2>
-            Level sampling solves texture aliasing that occurs when a single
-            screen pixel maps to a large region of texture space, causing
-            artifacts like moiré patterns. The solution is to precompute a
-            mipmap, a pyramid of progressively lower-resolution versions of the
-            texture. In my implementation, for each sample I compute UV
+            Level sampling is how you deal with texture aliasing when a single
+            screen pixel ends up covering a huge chunk of texture space, which
+            causes ugly artifacts like moiré patterns. The fix is precomputing a
+            mipmap, basically a stack of the same texture at progressively lower
+            resolutions. In my implementation, for each sample I compute UV
             coordinates at neighboring screen points, take the difference
             vectors, scale them to texel space, and use <code>log2</code> of the
-            largest footprint length to select the appropriate mip level.
-            <code>L_NEAREST</code> rounds to the closest level while
-            <code>L_LINEAR</code> interpolates between two bracketing levels for
-            smoother transitions. In terms of tradeoffs across all three
-            techniques, supersampling is the strongest antialiaser since it
-            handles geometry edges, texture, and color, but it scales memory and
-            render time linearly with sample count.
-            <code>P_LINEAR</code> (bilinear pixel sampling) is lightweight with
-            minimal memory overhead, smoothing within a mip level at the cost of
-            just four texture fetches per sample instead of one. Level sampling
-            sits in the middle, requiring about <code>33%</code> extra memory
-            for the mipmap but handling minification aliasing well at a modest
-            performance cost, with trilinear filtering adding only a small extra
-            cost to eliminate visible seams between mip levels.
+            largest footprint to figure out which mip level to sample from.
+            <code>L_NEAREST</code> just rounds to the closest level, while
+            <code>L_LINEAR</code> blends between two levels for a smoother
+            result. As for the tradeoffs between all three techniques,
+            supersampling gives the best antialiasing since it catches
+            everything from geometry edges to texture detail, but it's the most
+            expensive and memory usage scales directly with sample count.
+            <code>P_LINEAR</code> bilinear pixel sampling is much cheaper with
+            barely any memory cost, though it only smooths things out within a
+            single mip level. Level sampling lands somewhere in between, needing
+            around <code>33%</code> more memory for the mipmap but doing a solid
+            job reducing minification aliasing without tanking performance, and
+            trilinear filtering only adds a small extra cost on top to get rid
+            of those harsh transitions between mip levels.
 
             <div
                 style="
