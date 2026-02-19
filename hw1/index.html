@@ -231,11 +231,11 @@
             for a triangle with vertices A, B, and C, any interior point P can
             be written as <code>P = αA + βB + γC</code>, where the weights
             <code>α, β, γ</code> sum to 1 and each weight is proportional to how
-            close P is to that vertex — α is largest near A and shrinks as P
-            moves away. This makes them perfect for color interpolation: to
-            shade a point inside a triangle, we just compute its weights and
-            blend the vertex colors as <code>C = αC_A + βC_B + γC_C</code>. The
-            image above demonstrates this beautifully — the red, green, and blue
+            close P is to that vertex–α is largest near A and shrinks as P moves
+            away. This makes them perfect for color interpolation: to shade a
+            point inside a triangle, we just compute its weights and blend the
+            vertex colors as <code>C = αC_A + βC_B + γC_C</code>. The image
+            above demonstrates this beautifully. The red, green, and blue
             corners each dominate their neighborhood, and the interior smoothly
             mixes all three as the weights balance out, with the center
             appearing as a neutral gray where all three contribute equally.
@@ -270,13 +270,85 @@
             </div>
 
             <h2>Task 5: "Pixel sampling" for texture mapping</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+            Pixel sampling is the process of figuring out what color a pixel
+            should display by looking up a corresponding point on a texture
+            using continuous (u, v) coordinates, which are calculated by
+            interpolating UV values across a triangle using barycentric
+            coordinates. From there, either nearest or bilinear sampling is used
+            to determine the final color. Nearest sampling simply aligns to the
+            closest texel, which is fast but can look blocky and jagged,
+            especially along edges. Bilinear sampling instead blends the four
+            surrounding texels using weighted interpolation, producing much
+            smoother results. Looking at the four screenshots, this difference
+            is visible in the pixel inspector, where the boundary between the
+            teal ocean and the dark band representing the equator shows clear
+            jagged blocks with nearest sampling at 1 sample per pixel, while
+            bilinear at 1 sample per pixel already smooths that edge out
+            noticeably. Increasing to 16 samples per pixel helps nearest
+            sampling close the gap, since averaging multiple samples mimics a
+            blur, but bilinear at 16 samples per pixel still comes out the
+            cleanest. The two methods differ most when a texture is being
+            magnified or sampled at an angle, because that is when a small move
+            in screen space causes a large jump in texture space and nearest
+            sampling struggles with this discontinuity while bilinear handles it
+            more smoothly.
+
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_19-48-7.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                nearest sampling at 1 sample per pixel
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_19-48-18.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                nearest sampling at 16 samples per pixel
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_19-48-24.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                bilinear sampling at 1 sample per pixel
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="screenshot_2-18_19-48-27.png"
+                                width="300px"
+                            />
+                            <figcaption>
+                                bilinear sampling at 16 samples per pixel
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
             <h2>Task 6: "Level Sampling" with mipmaps for texture mapping</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
