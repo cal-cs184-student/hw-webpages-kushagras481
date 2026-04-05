@@ -1,106 +1,220 @@
 <html>
-	<head>
-		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=default'></script>
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-		<style>
-			h1 {
-				text-align: center;
-			}
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=default"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            h1 {
+                text-align: center;
+            }
 
-			.container {
-				margin: 0 auto;
-				padding: 60px 20%;
-			}
+            .container {
+                margin: 0 auto;
+                padding: 60px 20%;
+            }
 
-			figure {
-				text-align: center;
-			}
+            figure {
+                text-align: center;
+            }
 
-			img {
-				display: inline-block;
-			}
+            img {
+                display: inline-block;
+            }
 
-			body {
-				font-family: 'Inter', sans-serif;
-			}
-		</style>
-	</head>
-	<body>
-		<div class="container">
-		<h1>CS184/284A Spring 2025 Homework 3 Write-Up</h1>
-		<div style="text-align: center;">Names: </div>
+            body {
+                font-family: "Inter", sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>CS184/284A Spring 2025 Homework 3 Write-Up</h1>
+            <div style="text-align: center">Names:</div>
 
-		<br>
+            <br />
 
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
-		
-		<figure>
-			<img src="cornell.png" alt="Cornell Boxes with Bunnies" style="width:70%"/>
-			<figcaption>You can add images with captions!</figcaption>
-		</figure>
+            Link to webpage:
+            <a
+                href="https://cal-cs184-student.github.io/hw-webpages-kushagras481/hw2/index.html"
+                >cal-cs184-student.github.io/hw-webpages-kushagras481/hw3/index.html</a
+            >
 
-		<!--
+            <br />
+
+            Link to GitHub repository:
+            <a
+                href="https://github.com/cal-cs184-student/hw2-meshedit-kushagras.git"
+                >github.com/cal-cs184-student/hw3-pathtracer-kushagras.git</a
+            >
+
+            <figure>
+                <img
+                    src="cornell.png"
+                    alt="Cornell Boxes with Bunnies"
+                    style="width: 70%"
+                />
+                <figcaption>You can add images with captions!</figcaption>
+            </figure>
+
+            <!--
 		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
-		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+            <h2>Overview</h2>
+            Give a high-level overview of what you implemented in this homework.
+            Think about what you've built as a whole. Share your thoughts on
+            what interesting things you've learned from completing the homework.
 
-		<h2>Part 1: Ray Generation and Scene Intersection</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 1: Ray Generation and Scene Intersection</h2>
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
-		<div style="display: flex; flex-direction: column; align-items: center;">
-			<table style="width: 100%; text-align: center; border-collapse: collapse;">
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			</table>
-		</div>
-		
-		<h2>Part 2: Bounding Volume Hierarchy</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h3>Ray Generation and Primitive Intersection Pipeline</h3>
+            <p>
+                Ray generation begins in <code>Camera::generate_ray(x, y)</code>, where normalized
+                image coordinates \((x, y) \in [0,1]^2\) are mapped to a point on a virtual sensor
+                plane at \(Z = -1\) in camera space. The bottom-left corner of this sensor is at
+                \((-\tan(\text{hFov}/2),\, -\tan(\text{vFov}/2),\, -1)\) and the top-right corner
+                is at \((\tan(\text{hFov}/2),\, \tan(\text{vFov}/2),\, -1)\), so the sensor point is:
+                \[
+                    \mathbf{s} = \bigl((2x-1)\tan(\text{hFov}/2),\; (2y-1)\tan(\text{vFov}/2),\; -1\bigr)
+                \]
+                This direction is transformed to world space using the camera-to-world matrix
+                <code>c2w</code>, normalized, and the resulting ray originates at the camera position
+                <code>pos</code> with <code>min_t = nClip</code> and <code>max_t = fClip</code>.
+            </p>
+            <p>
+                In <code>PathTracer::raytrace_pixel(x, y)</code>, we estimate the radiance integral
+                over a pixel using Monte Carlo sampling. For each of <code>ns_aa</code> samples, a
+                random 2D offset is drawn from a uniform grid sampler and added to the pixel's
+                bottom-left corner coordinates. These are normalized to \([0,1]^2\) and passed to
+                <code>generate_ray</code>. The returned radiance values are averaged to produce the
+                final pixel color, which is written into the sample buffer.
+            </p>
+            <p>
+                Once a ray is generated, it is tested for intersection against all scene primitives.
+                If an intersection is found, <code>est_radiance_global_illumination</code> shades
+                the hit point — currently visualizing the surface normal as an RGB color for
+                debugging purposes.
+            </p>
 
-		<h2>Part 3: Direct Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h3>Triangle Intersection: Möller–Trumbore Algorithm</h3>
+            <p>
+                Triangle intersection is implemented using the Möller–Trumbore algorithm, which
+                solves for the intersection point directly in terms of barycentric coordinates
+                without first computing the plane equation. Given a ray
+                \(\mathbf{r}(t) = \mathbf{o} + t\mathbf{d}\) and triangle vertices
+                \(\mathbf{p}_1, \mathbf{p}_2, \mathbf{p}_3\), we compute:
+                \[
+                    \mathbf{e}_1 = \mathbf{p}_2 - \mathbf{p}_1, \quad
+                    \mathbf{e}_2 = \mathbf{p}_3 - \mathbf{p}_1, \quad
+                    \mathbf{s} = \mathbf{o} - \mathbf{p}_1
+                \]
+                \[
+                    \mathbf{s}_1 = \mathbf{d} \times \mathbf{e}_2, \quad
+                    \mathbf{s}_2 = \mathbf{s} \times \mathbf{e}_1
+                \]
+                \[
+                    t = \frac{\mathbf{s}_2 \cdot \mathbf{e}_2}{\mathbf{s}_1 \cdot \mathbf{e}_1}, \quad
+                    b_1 = \frac{\mathbf{s}_1 \cdot \mathbf{s}}{\mathbf{s}_1 \cdot \mathbf{e}_1}, \quad
+                    b_2 = \frac{\mathbf{s}_2 \cdot \mathbf{d}}{\mathbf{s}_1 \cdot \mathbf{e}_1}
+                \]
+                The intersection is valid when \(b_1 \geq 0\), \(b_2 \geq 0\),
+                \(b_1 + b_2 \leq 1\), and \(t \in [\text{min\_t},\, \text{max\_t}]\).
+                The third barycentric coordinate is \(b_0 = 1 - b_1 - b_2\). The surface normal at
+                the intersection is computed by interpolating the three vertex normals:
+                \(\mathbf{n} = b_0 \mathbf{n}_1 + b_1 \mathbf{n}_2 + b_2 \mathbf{n}_3\),
+                then normalized. The ray's <code>max_t</code> is updated to \(t\) so that
+                subsequent intersections farther away are culled.
+            </p>
 
-		<h2>Part 4: Global Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h3>Normal Shading Results</h3>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBempty.png" width="400px" />
+                            <figcaption>CBempty.dae — Cornell box with no objects, showing wall normals.</figcaption>
+                        </td>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBspheres.png" width="400px" />
+                            <figcaption>CBspheres_lambertian.dae — Cornell box with two spheres, showing sphere normals.</figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center; padding: 10px;" colspan="2">
+                            <img src="banana.png" width="400px" />
+                            <figcaption>banana.dae — Triangle mesh with interpolated vertex normals.</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
-		<h2>Part 5: Adaptive Sampling</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 2: Bounding Volume Hierarchy</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>(Optional) Part 6: Extra Credit Opportunities</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-		
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
-		</div>
-	</body>
+            <h2>Part 3: Direct Illumination</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h2>Part 4: Global Illumination</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h2>Part 5: Adaptive Sampling</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h2>(Optional) Part 6: Extra Credit Opportunities</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h2>Additional Notes (please remove)</h2>
+            <ul>
+                <li>
+                    You can also add code if you'd like as so:
+                    <code>code code code</code>
+                </li>
+                <li>
+                    If you'd like to add math equations,
+                    <ul>
+                        <li>
+                            You can write inline equations like so: \( a^2 + b^2
+                            = c^2 \)
+                        </li>
+                        <li>
+                            You can write display equations like so: \[ a^2 +
+                            b^2 = c^2 \]
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </body>
 </html>
