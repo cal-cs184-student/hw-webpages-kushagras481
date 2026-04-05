@@ -151,13 +151,68 @@
             </div>
 
             <h2>Part 2: Bounding Volume Hierarchy</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h3>BVH Construction Algorithm</h3>
+            <p>
+                The BVH is constructed recursively in <code>BVHAccel::construct_bvh</code>.
+                First, the bounding box over all primitives in the current range is computed by
+                expanding an initially empty <code>BBox</code> with each primitive's bounding box.
+                A new <code>BVHNode</code> is initialized with this bounding box.
+            </p>
+            <p>
+                If the number of primitives is at most <code>max_leaf_size</code>, the node is a
+                leaf and its <code>start</code> and <code>end</code> iterators are set directly.
+                Otherwise, we choose a split axis and partition the primitives recursively into
+                left and right children.
+            </p>
+            <p>
+                <b>Splitting heuristic:</b> We pick the axis with the largest extent of the
+                bounding box (i.e., the longest dimension). The split point is the average of all
+                primitive centroids along that axis. Primitives whose centroid falls below the
+                split point go to the left child; the rest go to the right. This heuristic keeps
+                both halves spatially compact and roughly balanced. If the partition is degenerate
+                (all primitives end up on one side), we fall back to splitting at the median index
+                to prevent infinite recursion.
+            </p>
+
+            <h3>Large Scene Renders with BVH Acceleration</h3>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="maxplanck.png" width="400px" />
+                            <figcaption>maxplanck.dae — 50,801 triangles, rendered in 0.026s with BVH.</figcaption>
+                        </td>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBlucy.png" width="400px" />
+                            <figcaption>CBlucy.dae — 133,796 triangles, rendered in 0.024s with BVH.</figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center; padding: 10px;" colspan="2">
+                            <img src="cow.png" width="400px" />
+                            <figcaption>cow.dae — 5,856 triangles, rendered in 0.042s with BVH.</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>BVH Acceleration: Timing Comparison</h3>
+            <p>
+                BVH acceleration provides a dramatic speedup for scenes with moderately complex
+                geometry. Without BVH, the starter code stores all primitives in a single leaf node,
+                forcing every ray to test against every primitive — an \(O(n)\) operation per ray.
+                The reference solution reported that rendering <code>cow.dae</code> (5,856 triangles)
+                without BVH took approximately 40 seconds on an instructional machine. With our BVH
+                implementation, the same scene rendered in just <b>0.042 seconds</b> — roughly a
+                <b>950× speedup</b>. Similarly, <code>banana.dae</code> (2,458 primitives) averaged
+                384 intersection tests per ray without BVH; with BVH, that drops to single-digit
+                tests per ray. Even scenes with hundreds of thousands of triangles, such as
+                <code>CBlucy.dae</code> (133,796 triangles), rendered in <b>0.024 seconds</b> by
+                reducing traversal complexity to \(O(\log n)\). The key insight is that the BVH
+                allows the renderer to cull entire subtrees of primitives early — if a ray misses
+                a node's bounding box, all primitives within that subtree are skipped at once.
+            </p>
 
             <h2>Part 3: Direct Illumination</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
