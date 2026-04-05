@@ -215,13 +215,108 @@
             </p>
 
             <h2>Part 3: Direct Illumination</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h3>Uniform Hemisphere Sampling</h3>
+            <p>
+                In <code>estimate_direct_lighting_hemisphere</code>, we estimate direct lighting
+                by sampling <code>num_samples</code> directions uniformly across the hemisphere
+                around the hit point. For each sample direction \(\omega_i\) (in object space),
+                we transform it to world space and cast a shadow ray from <code>hit_p</code> with
+                <code>min_t = EPS_F</code> to avoid self-intersection. If this ray hits a surface
+                with nonzero emission (i.e., a light), we accumulate the contribution using the
+                Monte Carlo estimator of the rendering equation:
+                \[
+                    L_{\text{out}} \approx \frac{1}{N} \sum_{i=1}^{N}
+                    \frac{f(\omega_o, \omega_i) \cdot L_i \cdot \cos\theta_i}{p(\omega_i)}
+                \]
+                where \(p(\omega_i) = \frac{1}{2\pi}\) for uniform hemisphere sampling and
+                \(\cos\theta_i = \omega_i.z\) (since the surface normal is aligned with \(z\)
+                in object space).
+            </p>
+
+            <h3>Importance Sampling Lights</h3>
+            <p>
+                In <code>estimate_direct_lighting_importance</code>, instead of sampling random
+                directions, we sample directly from each light source. For each light, we call
+                <code>sample_L</code> to get a sampled direction \(\omega_i\) (world space),
+                distance to the light, and the PDF value. We transform \(\omega_i\) to object
+                space and skip it if \(\cos\theta \leq 0\) (light is behind the surface). We
+                then cast a shadow ray with <code>max_t = distToLight - EPS_F</code> to check
+                for occlusion. If the path is unblocked, we accumulate:
+                \[
+                    L_{\text{out}} \mathrel{+}= \frac{1}{n}
+                    \sum_{j=1}^{n} \frac{f(\omega_o, \omega_j) \cdot L_j \cdot \cos\theta_j}{p(\omega_j)}
+                \]
+                For delta lights (point lights), only one sample is taken since all samples
+                would be identical. For area lights, <code>ns_area_light</code> samples are used.
+            </p>
+
+            <h3>Hemisphere vs. Importance Sampling</h3>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBbunny_H_16_8.png" width="400px" />
+                            <figcaption>Hemisphere sampling — 16 samples/pixel, 8 light samples.</figcaption>
+                        </td>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBbunny_I_16_8.png" width="400px" />
+                            <figcaption>Importance sampling — 16 samples/pixel, 8 light samples.</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Noise Comparison: Varying Light Rays (Importance Sampling, 1 sample/pixel)</h3>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBbunny_l1.png" width="380px" />
+                            <figcaption>1 light ray (-l 1)</figcaption>
+                        </td>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBbunny_l4.png" width="380px" />
+                            <figcaption>4 light rays (-l 4)</figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBbunny_l16.png" width="380px" />
+                            <figcaption>16 light rays (-l 16)</figcaption>
+                        </td>
+                        <td style="text-align: center; padding: 10px;">
+                            <img src="CBbunny_l64.png" width="380px" />
+                            <figcaption>64 light rays (-l 64)</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <p>
+                With 1 light ray, soft shadows are extremely noisy — each pixel samples the
+                area light only once, so whether a point is in shadow or not is nearly binary
+                and random. Increasing to 4 rays reduces the noise substantially, and at 16
+                rays the shadow edges begin to look smooth. At 64 rays, the soft shadows are
+                visually clean and the penumbra transitions are well-resolved, demonstrating
+                that more light samples directly reduce variance in the shadow estimate.
+            </p>
+
+            <h3>Analysis: Hemisphere vs. Importance Sampling</h3>
+            <p>
+                Uniform hemisphere sampling and importance sampling both converge to the same
+                correct result, but importance sampling converges much faster for scenes with
+                small or distant light sources. With hemisphere sampling, the probability of
+                a random direction hitting the area light is proportional to the light's solid
+                angle as seen from the hit point — which is small — so most samples contribute
+                zero radiance and the estimator has high variance, producing noisy images. With
+                importance sampling, every sample is guaranteed to point toward a light source,
+                so the variance is dramatically reduced for the same number of samples. The
+                practical consequence is visible in the renders: the importance-sampled image
+                has clearly smoother shading and softer shadows compared to hemisphere sampling
+                at the same sample counts. Additionally, hemisphere sampling cannot render
+                point lights at all (zero probability of hitting a single point), whereas
+                importance sampling handles them naturally by sampling them exactly once.
+            </p>
 
             <h2>Part 4: Global Illumination</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
