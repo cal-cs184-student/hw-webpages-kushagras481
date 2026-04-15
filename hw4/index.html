@@ -69,64 +69,92 @@
 
             <h2>Part 1: Masses and springs</h2>
             <p>
-                The cloth is represented as a grid of <strong>point masses</strong> connected by three types of springs,
-                each encoding a different physical constraint. I built the grid in row-major (x-axis) order: for a
-                cloth with <em>num_width_points</em> &times; <em>num_height_points</em> masses spanning a
-                <em>width</em> &times; <em>height</em> region, each mass at grid index \((x, y)\) is placed at
-                world position
+                The cloth is represented as a grid of
+                <strong>point masses</strong> connected by three types of
+                springs, each encoding a different physical constraint. I built
+                the grid in row-major (x-axis) order: for a cloth with
+                <em>num_width_points</em> &times;
+                <em>num_height_points</em> masses spanning a
+                <em>width</em> &times; <em>height</em> region, each mass at grid
+                index \((x, y)\) is placed at world position
             </p>
-            <p style="text-align: center;">
-                \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\; 1,\; \frac{y}{N_h - 1} \cdot h\right) \]
-            </p>
-            <p>
-                for a HORIZONTAL cloth (fixed \(y = 1\), varying over the \(xz\)-plane), and
-            </p>
-            <p style="text-align: center;">
-                \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\; \frac{y}{N_h - 1} \cdot h,\; \delta_z\right) \]
+            <p style="text-align: center">
+                \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\; 1,\;
+                \frac{y}{N_h - 1} \cdot h\right) \]
             </p>
             <p>
-                for a VERTICAL cloth (varying over the \(xy\)-plane), where \(\delta_z \in [-0.001, 0.001]\) is a
-                small random offset added to break the perfect planarity and prevent degeneracy during simulation.
+                for a HORIZONTAL cloth (fixed \(y = 1\), varying over the
+                \(xz\)-plane), and
+            </p>
+            <p style="text-align: center">
+                \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\;
+                \frac{y}{N_h - 1} \cdot h,\; \delta_z\right) \]
             </p>
             <p>
-                Once all point masses are placed, springs are added to encode three constraint types:
+                for a VERTICAL cloth (varying over the \(xy\)-plane), where
+                \(\delta_z \in [-0.001, 0.001]\) is a small random offset added
+                to break the perfect planarity and prevent degeneracy during
+                simulation.
+            </p>
+            <p>
+                Once all point masses are placed, springs are added to encode
+                three constraint types:
             </p>
             <ul>
                 <li>
-                    <strong>Structural</strong> &mdash; connect each mass to its immediate left neighbor
-                    \((x-1, y)\) and the mass directly above it \((x, y-1)\). These resist compression and
+                    <strong>Structural</strong> &mdash; connect each mass to its
+                    immediate left neighbor \((x-1, y)\) and the mass directly
+                    above it \((x, y-1)\). These resist compression and
                     stretching along the cloth's primary axes.
                 </li>
                 <li>
-                    <strong>Shearing</strong> &mdash; connect each mass to its diagonal upper-left
-                    \((x-1, y-1)\) and diagonal upper-right \((x+1, y-1)\) neighbors. These resist in-plane
-                    shear deformation.
+                    <strong>Shearing</strong> &mdash; connect each mass to its
+                    diagonal upper-left \((x-1, y-1)\) and diagonal upper-right
+                    \((x+1, y-1)\) neighbors. These resist in-plane shear
+                    deformation.
                 </li>
                 <li>
-                    <strong>Bending</strong> &mdash; connect each mass to the mass two steps to its left
-                    \((x-2, y)\) and two steps above \((x, y-2)\). These provide out-of-plane bending
-                    stiffness, acting over a longer range than structural springs.
+                    <strong>Bending</strong> &mdash; connect each mass to the
+                    mass two steps to its left \((x-2, y)\) and two steps above
+                    \((x, y-2)\). These provide out-of-plane bending stiffness,
+                    acting over a longer range than structural springs.
                 </li>
             </ul>
             <p>
-                Below are screenshots of <code>scene/pinned2.json</code> showing the wireframe from an angled view.
+                Below are screenshots of <code>scene/pinned2.json</code> showing
+                the wireframe from an angled view.
             </p>
 
-            <div style="display: flex; flex-direction: column; align-items: center;">
-                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
                     <tr>
                         <td style="text-align: center">
                             <img src="noshearing.png" width="400px" />
                             <figcaption>
-                                (1) No shearing constraints &mdash; only structural and bending springs visible.
-                                The grid shows clean horizontal and vertical connections with no diagonal lines.
+                                (1) No shearing constraints &mdash; only
+                                structural and bending springs visible. The grid
+                                shows clean horizontal and vertical connections
+                                with no diagonal lines.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="onlyshearing.png" width="400px" />
                             <figcaption>
-                                (2) Only shearing constraints &mdash; only diagonal springs visible.
-                                The cloth wireframe shows an "X" pattern across each grid cell.
+                                (2) Only shearing constraints &mdash; only
+                                diagonal springs visible. The cloth wireframe
+                                shows an "X" pattern across each grid cell.
                             </figcaption>
                         </td>
                     </tr>
@@ -134,9 +162,11 @@
                         <td colspan="2" style="text-align: center">
                             <img src="allenabled.png" width="400px" />
                             <figcaption>
-                                (3) All constraints enabled &mdash; structural, shearing, and bending springs all present.
-                                The wireframe is the densest here, with both axis-aligned and diagonal connections
-                                visible across the full grid.
+                                (3) All constraints enabled &mdash; structural,
+                                shearing, and bending springs all present. The
+                                wireframe is the densest here, with both
+                                axis-aligned and diagonal connections visible
+                                across the full grid.
                             </figcaption>
                         </td>
                     </tr>
@@ -144,13 +174,233 @@
             </div>
 
             <h2>Part 2: Simulation via numerical integration</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+            <p>
+                To animate the cloth, I implemented three steps inside
+                <code>Cloth::simulate</code>:
+            </p>
+
+            <h3>Force accumulation</h3>
+            <p>
+                At the start of each timestep all per-mass
+                <code>forces</code> vectors are reset. A single external force
+                \(\mathbf{F}_\text{ext} = m \sum_i \mathbf{a}_i\) is computed
+                from the external accelerations and applied uniformly to every
+                point mass. Spring correction forces follow Hooke's law:
+            </p>
+            <p style="text-align: center">
+                \[ \mathbf{F}_s = k_s \left(\|\mathbf{p}_b - \mathbf{p}_a\| -
+                l_0\right) \cdot \frac{\mathbf{p}_b -
+                \mathbf{p}_a}{\|\mathbf{p}_b - \mathbf{p}_a\|} \]
+            </p>
+            <p>
+                where \(l_0\) is the spring's rest length. The force is added to
+                mass \(a\) and subtracted from mass \(b\) (equal and opposite).
+                Bending springs use \(0.2 \cdot k_s\) so they are weaker than
+                structural/shearing springs, matching the physical intuition
+                that cloth resists stretching more than bending.
+            </p>
+
+            <h3>Verlet integration</h3>
+            <p>
+                New positions are computed with damped Verlet integration.
+                Pinned masses are skipped. For every free mass:
+            </p>
+            <p style="text-align: center">
+                \[ \mathbf{x}_{t+dt} = \mathbf{x}_t + (1 - d)\,(\mathbf{x}_t -
+                \mathbf{x}_{t-dt}) + \frac{\mathbf{F}}{m}\,dt^2 \]
+            </p>
+            <p>
+                where \(d = \texttt{damping}/100\). The term
+                \((1-d)(\mathbf{x}_t - \mathbf{x}_{t-dt})\) approximates \(v_t
+                \cdot dt\) while bleeding off a small fraction of kinetic energy
+                each step to model friction and heat loss.
+            </p>
+
+            <h3>Provot length constraint</h3>
+            <p>
+                After integration, each spring is checked: if its current length
+                exceeds \(1.1 \cdot l_0\), the two endpoint masses are nudged
+                toward each other along the spring direction to bring the length
+                back to \(1.1 \cdot l_0\). The correction is split evenly
+                between the two masses unless one is pinned, in which case the
+                full correction is applied to the free mass.
+            </p>
+
+            <h3>Parameter experiments (scene/pinned2.json)</h3>
+
+            <h4>Spring constant \(k_s\)</h4>
+            <p>
+                <strong>Low \(k_s\) (50 N/m):</strong> With very weak springs,
+                the cloth loses its structural rigidity. The sides bow strongly
+                inward toward each other, the top edge curves down sharply, and
+                the whole surface develops visible wrinkles and ripples at rest.
+                The cloth looks almost rubbery — unable to hold its own shape
+                against gravity.<br />
+                <strong>High \(k_s\) (50,000 N/m):</strong> With very stiff
+                springs, the cloth behaves almost like a rigid panel. It hangs
+                nearly flat and planar between the two pinned corners with
+                barely any visible curvature or droop — the spring forces are
+                strong enough to almost completely counteract gravity.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part2_low_ks.png" width="400px" />
+                            <figcaption>
+                                Low \(k_s = 50\) N/m &mdash; sides bow inward,
+                                wrinkled and floppy at rest.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part2_high_ks.png" width="400px" />
+                            <figcaption>
+                                High \(k_s = 50{,}000\) N/m &mdash; nearly flat
+                                and planar, almost no deformation.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h4>Density</h4>
+            <p>
+                <strong>Low density (1 g/cm²):</strong> The cloth is so light
+                that spring forces easily support it against gravity. At rest,
+                the surface is nearly completely flat with almost no visible
+                droop or curvature — it barely deforms from its initial
+                shape.<br />
+                <strong>High density (150 g/cm²):</strong> The heavier mass
+                means each point mass exerts a much larger gravitational force
+                on the springs. The sides bow outward and the bottom edge droops
+                noticeably more than at default density. The effect looks
+                similar to lowering \(k_s\), but the cause is different — the
+                springs are equally stiff, there is just more weight pulling
+                them down.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part2_low_density.png" width="400px" />
+                            <figcaption>
+                                Low density (1 g/cm²) &mdash; nearly flat,
+                                gravity has almost no visible effect.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part2_high_density.png" width="400px" />
+                            <figcaption>
+                                High density (150 g/cm²) &mdash; more pronounced
+                                side bowing and bottom droop.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h4>Damping</h4>
+            <p>
+                <strong>Low damping (~0%):</strong> Almost no kinetic energy is
+                removed each timestep, so the cloth swings far past its
+                equilibrium position and keeps oscillating. The screenshot shows
+                the cloth mid-swing, rotated and twisted well past where it
+                should rest — it behaves like cloth in a vacuum with no air
+                resistance or friction.<br />
+                <strong>High damping (1%):</strong> A large fraction of velocity
+                is bled off each step, so the cloth descends in extreme slow
+                motion. The screenshot was taken well into the simulation yet
+                the cloth has barely moved from its initial flat position — it
+                is still nearly vertical and planar, only just beginning to
+                fall. It eventually settles without any oscillation.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part2_low_damping.png" width="400px" />
+                            <figcaption>
+                                Low damping (~0%) &mdash; cloth mid-oscillation,
+                                swung far past equilibrium.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part2_high_damping.png" width="400px" />
+                            <figcaption>
+                                High damping (1%) &mdash; cloth barely moved
+                                after many frames; descends in slow motion.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>scene/pinned4.json at rest (default parameters)</h3>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part2_pinned4_rest.png" width="400px" />
+                            <figcaption>
+                                pinned4.json at its final resting state (default
+                                parameters: \(k_s = 5000\) N/m, density = 15
+                                g/cm², damping = 0.2%). All four corners are
+                                pinned; the cloth sags into a smooth
+                                hammock-like shape with the center lowest point
+                                forming a clean concave bowl.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
             <h2>Part 3: Handling collisions with other objects</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
