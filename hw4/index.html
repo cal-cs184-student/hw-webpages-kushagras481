@@ -35,7 +35,7 @@
 
             <br />
 
-            Link to webpage: (TODO)
+            Link to webpage:
             <a
                 href="https://cal-cs184-student.github.io/hw-webpages-kushagras481/hw4/index.html"
                 >cal-cs184-student.github.io/hw-webpages-kushagras481/hw4/index.html</a
@@ -43,7 +43,7 @@
 
             <br />
 
-            Link to GitHub repository: (TODO)
+            Link to GitHub repository:
             <a
                 href="https://github.com/cal-cs184-student/hw4-clothsim-kushagras.git"
                 >github.com/cal-cs184-student/hw4-clothsim-kushagras.git</a
@@ -55,7 +55,7 @@
                     alt="Cloth draped over sphere"
                     style="width: 70%"
                 />
-                <figcaption>You can add images with captions!</figcaption>
+                <figcaption>PRETTY!</figcaption>
             </figure>
 
             <!--
@@ -403,13 +403,153 @@
             </div>
 
             <h2>Part 3: Handling collisions with other objects</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h3>Implementation</h3>
+
+            <h4>Sphere collisions</h4>
+            <p>
+                For each point mass, I check whether its current position lies
+                inside the sphere (i.e. \(\|\mathbf{p} - \mathbf{o}\| \leq r\)).
+                If so, I compute the
+                <em>tangent point</em> — the point on the sphere's surface
+                directly along the ray from the sphere's origin through the
+                point mass's current position:
+            </p>
+            <p style="text-align: center">
+                \[ \mathbf{t} = \mathbf{o} + r \cdot \frac{\mathbf{p} -
+                \mathbf{o}}{\|\mathbf{p} - \mathbf{o}\|} \]
+            </p>
+            <p>
+                The correction vector brings <code>last_position</code> to the
+                tangent point, and the new position is that correction scaled
+                down by friction:
+            </p>
+            <p style="text-align: center">
+                \[ \mathbf{p}_\text{new} = \mathbf{p}_\text{last} + (1 -
+                f)\,(\mathbf{t} - \mathbf{p}_\text{last}) \]
+            </p>
+
+            <h4>Plane collisions</h4>
+            <p>
+                A point mass crosses the plane when
+                \(\text{sign}(\mathbf{d}_\text{last}) \neq
+                \text{sign}(\mathbf{d}_\text{curr})\), where \(\mathbf{d} =
+                (\mathbf{p} - \mathbf{q}) \cdot \hat{\mathbf{n}}\) is the signed
+                distance from the plane's reference point \(\mathbf{q}\) along
+                its normal \(\hat{\mathbf{n}}\). When a crossing is detected, I
+                find the exact intersection by ray-casting from
+                <code>last_position</code> toward <code>position</code>:
+            </p>
+            <p style="text-align: center">
+                \[ t = \frac{(\mathbf{q} - \mathbf{p}_\text{last}) \cdot
+                \hat{\mathbf{n}}}{(\mathbf{p} - \mathbf{p}_\text{last}) \cdot
+                \hat{\mathbf{n}}}, \quad \mathbf{t} = \mathbf{p}_\text{last} +
+                t\,(\mathbf{p} - \mathbf{p}_\text{last}) \]
+            </p>
+            <p>
+                The target is nudged a small <code>SURFACE_OFFSET</code> back
+                toward the original side of the plane, and the same
+                friction-scaled correction is applied:
+            </p>
+            <p style="text-align: center">
+                \[ \mathbf{p}_\text{new} = \mathbf{p}_\text{last} + (1 -
+                f)\,\bigl(\mathbf{t} +
+                \epsilon\,\text{side}\cdot\hat{\mathbf{n}} -
+                \mathbf{p}_\text{last}\bigr) \]
+            </p>
+            <p>
+                In <code>Cloth::simulate</code>, after Verlet integration, every
+                point mass is tested against every collision object by calling
+                <code>co->collide(pm)</code> in a nested loop.
+            </p>
+
+            <h3>Sphere at different \(k_s\) values</h3>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part3_sphere_ks500.png" width="400px" />
+                            <figcaption>
+                                \(k_s = 500\) N/m &mdash; very soft cloth wraps
+                                tightly around the entire sphere. Many long,
+                                thin folds hang nearly all the way to the
+                                ground, almost fully enveloping the sphere.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part3_sphere_ks5000.png" width="400px" />
+                            <figcaption>
+                                \(k_s = 5000\) N/m (default) &mdash; the cloth
+                                drapes naturally, covering the top of the sphere
+                                and falling off the sides in smooth,
+                                well-defined folds that hang partway down.
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: center">
+                            <img src="part3_sphere_ks50000.png" width="400px" />
+                            <figcaption>
+                                \(k_s = 50{,}000\) N/m &mdash; the stiff cloth
+                                barely conforms to the sphere. Rather than
+                                hanging down, the cloth extends outward nearly
+                                horizontally from the sphere's equator with very
+                                few folds, resting only lightly on the top
+                                surface.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <p>
+                In short, lower \(k_s\) produces a limp cloth that wraps tightly
+                around the sphere with many long folds; higher \(k_s\) produces
+                a stiff cloth that resists bending and extends outward rather
+                than draping downward.
+            </p>
+
+            <h3>Cloth at rest on the plane</h3>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part3_plane_rest.png" width="400px" />
+                            <figcaption>
+                                Cloth lying at rest on the plane
+                                (scene/plane.json, default parameters: \(k_s =
+                                5000\) N/m, density = 15 g/cm², damping = 0.2%).
+                                The cloth settles completely flat on the surface
+                                without passing through it, held up by the plane
+                                collision response.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
             <h2>Part 4: Handling self-collisions</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
