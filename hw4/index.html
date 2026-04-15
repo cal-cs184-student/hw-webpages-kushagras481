@@ -552,13 +552,139 @@
             </div>
 
             <h2>Part 4: Handling self-collisions</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h3>Implementation</h3>
+            <p>
+                Checking every pair of point masses for self-collision is \(O(n^2)\), which is too
+                slow for real-time simulation. Instead, I implemented spatial hashing to bring this
+                down to approximately \(O(n)\).
+            </p>
+
+            <h4>hash_position</h4>
+            <p>
+                The 3D space is partitioned into axis-aligned boxes of dimensions
+                \(w \times h \times t\) where \(w = 3W/N_w\), \(h = 3H/N_h\),
+                and \(t = \max(w, h)\). Each point mass's position is mapped to the
+                integer coordinates of its enclosing box via \(\lfloor p_x/w \rfloor\),
+                \(\lfloor p_y/h \rfloor\), \(\lfloor p_z/t \rfloor\), and those
+                three integers are combined into a single float using large prime multipliers
+                to minimize hash collisions:
+            </p>
+            <p style="text-align: center;">
+                \[ \text{hash} = \lfloor p_x/w \rfloor \cdot 92837111
+                               + \lfloor p_y/h \rfloor \cdot 689287499
+                               + \lfloor p_z/t \rfloor \cdot 283923481 \]
+            </p>
+
+            <h4>build_spatial_map</h4>
+            <p>
+                At the start of each timestep the map is cleared and rebuilt by iterating over
+                every point mass, hashing its position, and inserting a pointer to it into the
+                corresponding bucket. This takes \(O(n)\) time.
+            </p>
+
+            <h4>self_collide</h4>
+            <p>
+                For a given point mass, I look up its hash bucket and check each candidate in
+                the bucket (excluding the mass itself). If the distance to a candidate is less
+                than \(2 \cdot \texttt{thickness}\), I compute a repulsive correction vector
+                that would push the mass far enough away to restore that minimum separation.
+                The average of all pairwise corrections is then divided by
+                <code>simulation_steps</code> to keep position updates gradual:
+            </p>
+            <p style="text-align: center;">
+                \[ \Delta\mathbf{p} = \frac{1}{n \cdot \text{steps}}
+                   \sum_i \hat{d}_i \,(2t - \|\mathbf{p} - \mathbf{p}_i\|) \]
+            </p>
+            <p>
+                where \(\hat{d}_i\) is the unit vector from candidate \(i\) toward the point mass.
+                <code>build_spatial_map</code> and <code>self_collide</code> are called inside
+                <code>Cloth::simulate</code> after Verlet integration and before the Provot
+                length constraint.
+            </p>
+
+            <h3>Cloth falling and folding on itself (default parameters)</h3>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part4_fall_early.png" width="400px" />
+                            <figcaption>
+                                Early — the bottom of the cloth has just hit the ground
+                                and the first crumple is forming while the rest of the
+                                cloth is still descending from above.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part4_fall_mid.png" width="400px" />
+                            <figcaption>
+                                Mid-fall — multiple distinct layers are stacking on top
+                                of each other. Clear folding and self-collision is visible
+                                as the cloth collapses onto itself.
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: center">
+                            <img src="part4_fall_rest.png" width="400px" />
+                            <figcaption>
+                                Near rest — the cloth has fully settled into a flat,
+                                layered pile spread across the plane, with overlapping
+                                sections visible from the folding.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Effect of varying density</h3>
+            <p>
+                <strong>Low density (1 g/cm²):</strong> The cloth is light so spring forces
+                dominate over gravity. It falls slowly and settles into just 2–3 wide, gentle
+                pleats spread broadly across the plane — barely crumpled, almost flat.<br/>
+                <strong>High density (150 g/cm²):</strong> Gravity dominates and the cloth
+                falls faster and harder. It crumples into a more compact pile with tighter,
+                more numerous folds packed into a smaller area on the ground.
+            </p>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part4_low_density.png" width="400px" />
+                            <figcaption>Low density (1 g/cm²) &mdash; wide, gentle pleats spread flat across the plane.</figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part4_high_density.png" width="400px" />
+                            <figcaption>High density (150 g/cm²) &mdash; tighter, more numerous folds in a compact pile.</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Effect of varying \(k_s\)</h3>
+            <p>
+                <strong>Low \(k_s\) (500 N/m):</strong> The weak springs offer little resistance
+                to bending, so the cloth folds loosely with many overlapping layers spread across
+                the ground. The folds are numerous but relatively shallow.<br/>
+                <strong>High \(k_s\) (50,000 N/m):</strong> The stiff springs strongly resist
+                bending, so the cloth maintains its structure as it falls. It settles into very
+                few, clean, broad folds — almost like a folded board — forming a thick, structured
+                pile rather than a crumpled heap.
+            </p>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part4_low_ks.png" width="400px" />
+                            <figcaption>Low \(k_s = 500\) N/m &mdash; many loose, overlapping folds spread across the ground.</figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part4_high_ks.png" width="400px" />
+                            <figcaption>High \(k_s = 50{,}000\) N/m &mdash; just a few clean, broad folds; stiff and structured.</figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
             <h2>Part 5: Shaders</h2>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
