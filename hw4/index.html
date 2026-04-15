@@ -1,109 +1,216 @@
 <html>
-	<head>
-		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=default'></script>
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-		<style>
-			h1 {
-				text-align: center;
-			}
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=default"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            h1 {
+                text-align: center;
+            }
 
-			.container {
-				margin: 0 auto;
-				padding: 60px 20%;
-			}
+            .container {
+                margin: 0 auto;
+                padding: 60px 20%;
+            }
 
-			figure {
-				text-align: center;
-			}
+            figure {
+                text-align: center;
+            }
 
-			img {
-				display: inline-block;
-			}
+            img {
+                display: inline-block;
+            }
 
-			body {
-				font-family: 'Inter', sans-serif;
-			}
-		</style>
-	</head>
-	<body>
-		<div class="container">
-		<h1>CS184/284A Spring 2025 Homework 4 Write-Up</h1>
-		<div style="text-align: center;">Names: </div>
+            body {
+                font-family: "Inter", sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>CS184/284A Spring 2025 Homework 4 Write-Up</h1>
+            <div style="text-align: center">Names: Kushagra Srivastava</div>
 
-		<br>
+            <br />
 
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+            Link to webpage: (TODO)
+            <a
+                href="https://cal-cs184-student.github.io/hw-webpages-kushagras481/hw4/index.html"
+                >cal-cs184-student.github.io/hw-webpages-kushagras481/hw4/index.html</a
+            >
 
-		<br>
+            <br />
 
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+            Link to GitHub repository: (TODO)
+            <a
+                href="https://github.com/cal-cs184-student/hw4-clothsim-kushagras.git"
+                >github.com/cal-cs184-student/hw4-clothsim-kushagras.git</a
+            >
 
-		<figure>
-			<img src="clothsim.png" alt="Cloth draped over sphere" style="width:70%"/>
-			<figcaption>You can add images with captions!</figcaption>
-		</figure>
+            <figure>
+                <img
+                    src="clothsim.png"
+                    alt="Cloth draped over sphere"
+                    style="width: 70%"
+                />
+                <figcaption>You can add images with captions!</figcaption>
+            </figure>
 
-		<!--
+            <!--
 		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
-		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+            <h2>Overview</h2>
+            Give a high-level overview of what you implemented in this homework.
+            Think about what you've built as a whole. Share your thoughts on
+            what interesting things you've learned from completing the homework.
 
-		<h2>Part 1: Masses and springs</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 1: Masses and springs</h2>
+            <p>
+                The cloth is represented as a grid of <strong>point masses</strong> connected by three types of springs,
+                each encoding a different physical constraint. I built the grid in row-major (x-axis) order: for a
+                cloth with <em>num_width_points</em> &times; <em>num_height_points</em> masses spanning a
+                <em>width</em> &times; <em>height</em> region, each mass at grid index \((x, y)\) is placed at
+                world position
+            </p>
+            <p style="text-align: center;">
+                \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\; 1,\; \frac{y}{N_h - 1} \cdot h\right) \]
+            </p>
+            <p>
+                for a HORIZONTAL cloth (fixed \(y = 1\), varying over the \(xz\)-plane), and
+            </p>
+            <p style="text-align: center;">
+                \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\; \frac{y}{N_h - 1} \cdot h,\; \delta_z\right) \]
+            </p>
+            <p>
+                for a VERTICAL cloth (varying over the \(xy\)-plane), where \(\delta_z \in [-0.001, 0.001]\) is a
+                small random offset added to break the perfect planarity and prevent degeneracy during simulation.
+            </p>
+            <p>
+                Once all point masses are placed, springs are added to encode three constraint types:
+            </p>
+            <ul>
+                <li>
+                    <strong>Structural</strong> &mdash; connect each mass to its immediate left neighbor
+                    \((x-1, y)\) and the mass directly above it \((x, y-1)\). These resist compression and
+                    stretching along the cloth's primary axes.
+                </li>
+                <li>
+                    <strong>Shearing</strong> &mdash; connect each mass to its diagonal upper-left
+                    \((x-1, y-1)\) and diagonal upper-right \((x+1, y-1)\) neighbors. These resist in-plane
+                    shear deformation.
+                </li>
+                <li>
+                    <strong>Bending</strong> &mdash; connect each mass to the mass two steps to its left
+                    \((x-2, y)\) and two steps above \((x, y-2)\). These provide out-of-plane bending
+                    stiffness, acting over a longer range than structural springs.
+                </li>
+            </ul>
+            <p>
+                Below are screenshots of <code>scene/pinned2.json</code> showing the wireframe from an angled view.
+            </p>
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
-		<div style="display: flex; flex-direction: column; align-items: center;">
-			<table style="width: 100%; text-align: center; border-collapse: collapse;">
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="clothsim.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="clothsim.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="clothsim.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="clothsim.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			</table>
-		</div>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="noshearing.png" width="400px" />
+                            <figcaption>
+                                (1) No shearing constraints &mdash; only structural and bending springs visible.
+                                The grid shows clean horizontal and vertical connections with no diagonal lines.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="onlyshearing.png" width="400px" />
+                            <figcaption>
+                                (2) Only shearing constraints &mdash; only diagonal springs visible.
+                                The cloth wireframe shows an "X" pattern across each grid cell.
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: center">
+                            <img src="allenabled.png" width="400px" />
+                            <figcaption>
+                                (3) All constraints enabled &mdash; structural, shearing, and bending springs all present.
+                                The wireframe is the densest here, with both axis-aligned and diagonal connections
+                                visible across the full grid.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
 
-		<h2>Part 2: Simulation via numerical integration</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 2: Simulation via numerical integration</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>Part 3: Handling collisions with other objects</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 3: Handling collisions with other objects</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>Part 4: Handling self-collisions</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 4: Handling self-collisions</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>Part 5: Shaders</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            <h2>Part 5: Shaders</h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>(Optional) Part 6: Extra Credit - Additional cloth simulation features!</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-		
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
-		</div>
-	</body>
+            <h2>
+                (Optional) Part 6: Extra Credit - Additional cloth simulation
+                features!
+            </h2>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+            aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
+
+            <h2>Additional Notes (please remove)</h2>
+            <ul>
+                <li>
+                    You can also add code if you'd like as so:
+                    <code>code code code</code>
+                </li>
+                <li>
+                    If you'd like to add math equations,
+                    <ul>
+                        <li>
+                            You can write inline equations like so: \( a^2 + b^2
+                            = c^2 \)
+                        </li>
+                        <li>
+                            You can write display equations like so: \[ a^2 +
+                            b^2 = c^2 \]
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </body>
 </html>
