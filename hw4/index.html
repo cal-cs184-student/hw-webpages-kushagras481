@@ -555,72 +555,92 @@
 
             <h3>Implementation</h3>
             <p>
-                Checking every pair of point masses for self-collision is \(O(n^2)\), which is too
-                slow for real-time simulation. Instead, I implemented spatial hashing to bring this
-                down to approximately \(O(n)\).
+                Checking every pair of point masses for self-collision is
+                \(O(n^2)\), which is too slow for real-time simulation. Instead,
+                I implemented spatial hashing to bring this down to
+                approximately \(O(n)\).
             </p>
 
             <h4>hash_position</h4>
             <p>
-                The 3D space is partitioned into axis-aligned boxes of dimensions
-                \(w \times h \times t\) where \(w = 3W/N_w\), \(h = 3H/N_h\),
-                and \(t = \max(w, h)\). Each point mass's position is mapped to the
-                integer coordinates of its enclosing box via \(\lfloor p_x/w \rfloor\),
-                \(\lfloor p_y/h \rfloor\), \(\lfloor p_z/t \rfloor\), and those
-                three integers are combined into a single float using large prime multipliers
-                to minimize hash collisions:
+                The 3D space is partitioned into axis-aligned boxes of
+                dimensions \(w \times h \times t\) where \(w = 3W/N_w\), \(h =
+                3H/N_h\), and \(t = \max(w, h)\). Each point mass's position is
+                mapped to the integer coordinates of its enclosing box via
+                \(\lfloor p_x/w \rfloor\), \(\lfloor p_y/h \rfloor\), \(\lfloor
+                p_z/t \rfloor\), and those three integers are combined into a
+                single float using large prime multipliers to minimize hash
+                collisions:
             </p>
-            <p style="text-align: center;">
-                \[ \text{hash} = \lfloor p_x/w \rfloor \cdot 92837111
-                               + \lfloor p_y/h \rfloor \cdot 689287499
-                               + \lfloor p_z/t \rfloor \cdot 283923481 \]
+            <p style="text-align: center">
+                \[ \text{hash} = \lfloor p_x/w \rfloor \cdot 92837111 + \lfloor
+                p_y/h \rfloor \cdot 689287499 + \lfloor p_z/t \rfloor \cdot
+                283923481 \]
             </p>
 
             <h4>build_spatial_map</h4>
             <p>
-                At the start of each timestep the map is cleared and rebuilt by iterating over
-                every point mass, hashing its position, and inserting a pointer to it into the
-                corresponding bucket. This takes \(O(n)\) time.
+                At the start of each timestep the map is cleared and rebuilt by
+                iterating over every point mass, hashing its position, and
+                inserting a pointer to it into the corresponding bucket. This
+                takes \(O(n)\) time.
             </p>
 
             <h4>self_collide</h4>
             <p>
-                For a given point mass, I look up its hash bucket and check each candidate in
-                the bucket (excluding the mass itself). If the distance to a candidate is less
-                than \(2 \cdot \texttt{thickness}\), I compute a repulsive correction vector
-                that would push the mass far enough away to restore that minimum separation.
-                The average of all pairwise corrections is then divided by
+                For a given point mass, I look up its hash bucket and check each
+                candidate in the bucket (excluding the mass itself). If the
+                distance to a candidate is less than \(2 \cdot
+                \texttt{thickness}\), I compute a repulsive correction vector
+                that would push the mass far enough away to restore that minimum
+                separation. The average of all pairwise corrections is then
+                divided by
                 <code>simulation_steps</code> to keep position updates gradual:
             </p>
-            <p style="text-align: center;">
-                \[ \Delta\mathbf{p} = \frac{1}{n \cdot \text{steps}}
-                   \sum_i \hat{d}_i \,(2t - \|\mathbf{p} - \mathbf{p}_i\|) \]
+            <p style="text-align: center">
+                \[ \Delta\mathbf{p} = \frac{1}{n \cdot \text{steps}} \sum_i
+                \hat{d}_i \,(2t - \|\mathbf{p} - \mathbf{p}_i\|) \]
             </p>
             <p>
-                where \(\hat{d}_i\) is the unit vector from candidate \(i\) toward the point mass.
-                <code>build_spatial_map</code> and <code>self_collide</code> are called inside
-                <code>Cloth::simulate</code> after Verlet integration and before the Provot
-                length constraint.
+                where \(\hat{d}_i\) is the unit vector from candidate \(i\)
+                toward the point mass.
+                <code>build_spatial_map</code> and <code>self_collide</code> are
+                called inside <code>Cloth::simulate</code> after Verlet
+                integration and before the Provot length constraint.
             </p>
 
             <h3>Cloth falling and folding on itself (default parameters)</h3>
-            <div style="display: flex; flex-direction: column; align-items: center;">
-                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
                     <tr>
                         <td style="text-align: center">
                             <img src="part4_fall_early.png" width="400px" />
                             <figcaption>
-                                Early — the bottom of the cloth has just hit the ground
-                                and the first crumple is forming while the rest of the
-                                cloth is still descending from above.
+                                Early — the bottom of the cloth has just hit the
+                                ground and the first crumple is forming while
+                                the rest of the cloth is still descending from
+                                above.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part4_fall_mid.png" width="400px" />
                             <figcaption>
-                                Mid-fall — multiple distinct layers are stacking on top
-                                of each other. Clear folding and self-collision is visible
-                                as the cloth collapses onto itself.
+                                Mid-fall — multiple distinct layers are stacking
+                                on top of each other. Clear folding and
+                                self-collision is visible as the cloth collapses
+                                onto itself.
                             </figcaption>
                         </td>
                     </tr>
@@ -628,9 +648,9 @@
                         <td colspan="2" style="text-align: center">
                             <img src="part4_fall_rest.png" width="400px" />
                             <figcaption>
-                                Near rest — the cloth has fully settled into a flat,
-                                layered pile spread across the plane, with overlapping
-                                sections visible from the folding.
+                                Near rest — the cloth has fully settled into a
+                                flat, layered pile spread across the plane, with
+                                overlapping sections visible from the folding.
                             </figcaption>
                         </td>
                     </tr>
@@ -639,23 +659,43 @@
 
             <h3>Effect of varying density</h3>
             <p>
-                <strong>Low density (1 g/cm²):</strong> The cloth is light so spring forces
-                dominate over gravity. It falls slowly and settles into just 2–3 wide, gentle
-                pleats spread broadly across the plane — barely crumpled, almost flat.<br/>
-                <strong>High density (150 g/cm²):</strong> Gravity dominates and the cloth
-                falls faster and harder. It crumples into a more compact pile with tighter,
-                more numerous folds packed into a smaller area on the ground.
+                <strong>Low density (1 g/cm²):</strong> The cloth is light so
+                spring forces dominate over gravity. It falls slowly and settles
+                into just 2–3 wide, gentle pleats spread broadly across the
+                plane — barely crumpled, almost flat.<br />
+                <strong>High density (150 g/cm²):</strong> Gravity dominates and
+                the cloth falls faster and harder. It crumples into a more
+                compact pile with tighter, more numerous folds packed into a
+                smaller area on the ground.
             </p>
-            <div style="display: flex; flex-direction: column; align-items: center;">
-                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
                     <tr>
                         <td style="text-align: center">
                             <img src="part4_low_density.png" width="400px" />
-                            <figcaption>Low density (1 g/cm²) &mdash; wide, gentle pleats spread flat across the plane.</figcaption>
+                            <figcaption>
+                                Low density (1 g/cm²) &mdash; wide, gentle
+                                pleats spread flat across the plane.
+                            </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part4_high_density.png" width="400px" />
-                            <figcaption>High density (150 g/cm²) &mdash; tighter, more numerous folds in a compact pile.</figcaption>
+                            <figcaption>
+                                High density (150 g/cm²) &mdash; tighter, more
+                                numerous folds in a compact pile.
+                            </figcaption>
                         </td>
                     </tr>
                 </table>
@@ -663,70 +703,400 @@
 
             <h3>Effect of varying \(k_s\)</h3>
             <p>
-                <strong>Low \(k_s\) (500 N/m):</strong> The weak springs offer little resistance
-                to bending, so the cloth folds loosely with many overlapping layers spread across
-                the ground. The folds are numerous but relatively shallow.<br/>
-                <strong>High \(k_s\) (50,000 N/m):</strong> The stiff springs strongly resist
-                bending, so the cloth maintains its structure as it falls. It settles into very
-                few, clean, broad folds — almost like a folded board — forming a thick, structured
-                pile rather than a crumpled heap.
+                <strong>Low \(k_s\) (500 N/m):</strong> The weak springs offer
+                little resistance to bending, so the cloth folds loosely with
+                many overlapping layers spread across the ground. The folds are
+                numerous but relatively shallow.<br />
+                <strong>High \(k_s\) (50,000 N/m):</strong> The stiff springs
+                strongly resist bending, so the cloth maintains its structure as
+                it falls. It settles into very few, clean, broad folds — almost
+                like a folded board — forming a thick, structured pile rather
+                than a crumpled heap.
             </p>
-            <div style="display: flex; flex-direction: column; align-items: center;">
-                <table style="width: 100%; text-align: center; border-collapse: collapse;">
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
                     <tr>
                         <td style="text-align: center">
                             <img src="part4_low_ks.png" width="400px" />
-                            <figcaption>Low \(k_s = 500\) N/m &mdash; many loose, overlapping folds spread across the ground.</figcaption>
+                            <figcaption>
+                                Low \(k_s = 500\) N/m &mdash; many loose,
+                                overlapping folds spread across the ground.
+                            </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part4_high_ks.png" width="400px" />
-                            <figcaption>High \(k_s = 50{,}000\) N/m &mdash; just a few clean, broad folds; stiff and structured.</figcaption>
+                            <figcaption>
+                                High \(k_s = 50{,}000\) N/m &mdash; just a few
+                                clean, broad folds; stiff and structured.
+                            </figcaption>
                         </td>
                     </tr>
                 </table>
             </div>
 
             <h2>Part 5: Shaders</h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
 
-            <h2>
-                (Optional) Part 6: Extra Credit - Additional cloth simulation
-                features!
-            </h2>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Duis aute irure dolor in
-            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-            culpa qui officia deserunt mollit anim id est laborum.
+            <h3>What is a shader program?</h3>
+            <p>
+                A shader program is a small, isolated program that runs entirely
+                on the GPU in parallel across many threads simultaneously — one
+                thread per vertex or fragment. Unlike CPU code, each shader
+                invocation has no visibility into what other invocations are
+                doing; it just reads its inputs and writes a single output. This
+                parallelism is what makes real-time rendering possible.
+            </p>
+            <p>
+                A full shader pipeline pairs two shader types: a
+                <strong>vertex shader</strong> and a
+                <strong>fragment shader</strong>. The vertex shader runs once
+                per vertex and is responsible for transforming geometry — it
+                converts model-space positions and normals into world space and
+                clips them to screen space, writing the final screen-space
+                position to <code>gl_Position</code>. Any extra per-vertex data
+                (world-space position, normal, UV coordinates) is passed along
+                as <em>varying</em> outputs. After the vertex shader, the GPU
+                rasterizes the triangles and interpolates those varyings across
+                the surface using barycentric coordinates. The
+                <strong>fragment shader</strong> then runs once per rasterized
+                fragment, receiving the interpolated varyings and computing a
+                final color. Together they implement a full lighting and
+                material model: the vertex shader sets up the geometry, the
+                fragment shader evaluates the shading equation.
+            </p>
 
-            <h2>Additional Notes (please remove)</h2>
+            <h3>Blinn-Phong shading model</h3>
+            <p>Blinn-Phong decomposes light into three components:</p>
             <ul>
                 <li>
-                    You can also add code if you'd like as so:
-                    <code>code code code</code>
+                    <strong>Ambient</strong> \(k_a I_a\) — a constant base color
+                    that approximates indirect, bounced light. It prevents
+                    surfaces facing away from the light from going completely
+                    black.
                 </li>
                 <li>
-                    If you'd like to add math equations,
-                    <ul>
-                        <li>
-                            You can write inline equations like so: \( a^2 + b^2
-                            = c^2 \)
-                        </li>
-                        <li>
-                            You can write display equations like so: \[ a^2 +
-                            b^2 = c^2 \]
-                        </li>
-                    </ul>
+                    <strong>Diffuse</strong> \(k_d (I/r^2) \max(0, \mathbf{n}
+                    \cdot \mathbf{l})\) — Lambertian scattering that depends
+                    only on the angle between the surface normal \(\mathbf{n}\)
+                    and the light direction \(\mathbf{l}\). It is
+                    view-independent.
+                </li>
+                <li>
+                    <strong>Specular</strong> \(k_s (I/r^2) \max(0, \mathbf{n}
+                    \cdot \mathbf{h})^p\) — a shiny highlight that depends on
+                    the half-vector \(\mathbf{h} = \text{normalize}(\mathbf{l} +
+                    \mathbf{v})\) between the light and view directions. The
+                    exponent \(p\) controls the tightness of the highlight.
                 </li>
             </ul>
+            <p>
+                My values: \(k_a = 0.1\), \(k_d = 0.8\), \(k_s = 0.5\), \(I_a =
+                (1,1,1)\), \(p = 64\).
+            </p>
+
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part5_phong_ambient.png" width="400px" />
+                            <figcaption>
+                                Ambient only — scene is nearly black since \(k_a
+                                = 0.1\) produces a very dim constant term. This
+                                is intentional; ambient alone barely lights the
+                                scene.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part5_phong_diffuse.png" width="400px" />
+                            <figcaption>
+                                Diffuse only — smooth Lambertian gradient
+                                visible across the cloth and sphere, brighter
+                                where the surface faces the light.
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part5_phong_specular.png" width="400px" />
+                            <figcaption>
+                                Specular only — almost entirely black with a
+                                single tight bright highlight on the sphere
+                                where \(\mathbf{n} \cdot \mathbf{h}\) is
+                                maximized. \(p = 64\) keeps it narrow.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part5_phong_full.png" width="400px" />
+                            <figcaption>
+                                Full Blinn-Phong — all three components
+                                combined. The sphere shows a clear specular
+                                highlight, smooth diffuse shading, and a
+                                barely-visible ambient floor.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Texture mapping</h3>
+            <p>
+                The texture shader simply samples <code>u_texture_1</code> at
+                the interpolated UV coordinate <code>v_uv</code> using GLSL's
+                built-in <code>texture()</code> function and outputs that color
+                directly.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part5_texture.png" width="400px" />
+                            <figcaption>
+                                Custom texture mapped onto the cloth and sphere
+                                — a fabric/scale pattern sampled directly from
+                                UV coordinates with no lighting computation.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Bump and displacement mapping</h3>
+            <p>
+                Both shaders use the same height map \(h(u,v)\) = the red
+                channel of
+                <code>u_texture_2</code> sampled at the fragment's UV
+                coordinates.
+            </p>
+            <p>
+                <strong>Bump mapping</strong> only modifies the shading normal —
+                geometry is unchanged. Finite differences give the height
+                gradient:
+            </p>
+            <p style="text-align: center">
+                \[ dU = (h(u + 1/w,\, v) - h(u,v)) \cdot k_h k_n, \quad dV =
+                (h(u,\, v + 1/h) - h(u,v)) \cdot k_h k_n \]
+            </p>
+            <p>
+                The local-space normal \(\mathbf{n}_o = (-dU, -dV, 1)\) is
+                transformed to world space via the TBN matrix \([{\bf t},\, {\bf
+                b},\, {\bf n}]\) where \({\bf b} = {\bf n} \times {\bf t}\).
+                This perturbed normal is then used in Blinn-Phong shading.
+            </p>
+            <p>
+                <strong>Displacement mapping</strong> goes further — it actually
+                moves vertices along their model-space normal in the vertex
+                shader: \(\mathbf{p}' = \mathbf{p} + \mathbf{n} \cdot h(u,v)
+                \cdot k_h\). The fragment shader is identical to bump mapping.
+            </p>
+
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part5_bump_cloth.png" width="400px" />
+                            <figcaption>
+                                Bump mapping on the cloth (top-down view) —
+                                Phong shading with height-map perturbed normals.
+                                Surface detail is subtle at these parameter
+                                values (Normal=2, Height=0.1).
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part5_bump_sphere.png" width="400px" />
+                            <figcaption>
+                                Bump mapping on the sphere — normals respond to
+                                the height map giving the illusion of surface
+                                relief, while the silhouette remains perfectly
+                                smooth.
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: center">
+                            <img
+                                src="part5_displacement_sphere.png"
+                                width="400px"
+                            />
+                            <figcaption>
+                                Displacement mapping on the sphere (Height=0.1)
+                                — vertex positions are physically moved along
+                                the normal by \(h(u,v) \cdot k_h\). At this
+                                scale the deformation is very subtle and the
+                                sphere appears nearly as smooth as the bump
+                                version.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <p>
+                Bump mapping only perturbs normals — the sphere silhouette stays
+                perfectly smooth no matter what. Displacement mapping physically
+                moves vertices, so at larger height values the silhouette would
+                visibly deform. At Height=0.1 both shaders look nearly
+                identical, but the coarseness comparison below reveals the key
+                difference: bump mapping is resolution-independent while
+                displacement quality scales directly with vertex density.
+            </p>
+
+            <h4>Effect of mesh coarseness on bump vs. displacement</h4>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part5_bump_coarse.png" width="400px" />
+                            <figcaption>
+                                Bump, coarse mesh (-o 16 -a 16) — looks nearly
+                                identical to the fine mesh. Bump only perturbs
+                                normals in the fragment shader, so vertex count
+                                has almost no effect.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part5_bump_fine.png" width="400px" />
+                            <figcaption>
+                                Bump, fine mesh (-o 128 -a 128) — virtually the
+                                same result as coarse, confirming bump mapping
+                                is mesh-resolution independent.
+                            </figcaption>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: center">
+                            <img
+                                src="part5_displacement_coarse.png"
+                                width="400px"
+                            />
+                            <figcaption>
+                                Displacement, coarse mesh (-o 16 -a 16) — at
+                                Height=0.1 the displacement is too subtle to
+                                show visible blockiness, but with larger height
+                                values the low vertex count would produce jagged
+                                geometry that can't capture fine height map
+                                detail.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img
+                                src="part5_displacement_fine.png"
+                                width="400px"
+                            />
+                            <figcaption>
+                                Displacement, fine mesh (-o 128 -a 128) — the
+                                dense vertex grid would faithfully follow the
+                                height map at higher height values; at
+                                Height=0.1 the result is visually similar to the
+                                coarse mesh.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Mirror shader</h3>
+            <p>
+                The mirror shader computes the outgoing eye ray \(\mathbf{w}_o =
+                \text{normalize}(\mathbf{p} - \mathbf{c})\), reflects it across
+                the surface normal to get the incoming direction \(\mathbf{w}_i
+                = \text{reflect}(\mathbf{w}_o, \mathbf{n})\), and samples the
+                cubemap environment texture in that direction using
+                <code>texture(u_texture_cubemap, wi)</code>.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                "
+            >
+                <table
+                    style="
+                        width: 100%;
+                        text-align: center;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
+                        <td style="text-align: center">
+                            <img src="part5_mirror_cloth.png" width="400px" />
+                            <figcaption>
+                                Mirror shader on the cloth — the flat surface
+                                reflects the cubemap environment (building and
+                                sky) perfectly, like a mirror laid on the
+                                ground.
+                            </figcaption>
+                        </td>
+                        <td style="text-align: center">
+                            <img src="part5_mirror_sphere.png" width="400px" />
+                            <figcaption>
+                                Mirror shader on the sphere — classic mirror
+                                ball effect, with the full environment cubemap
+                                reflected across the curved surface.
+                            </figcaption>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </body>
 </html>
