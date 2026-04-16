@@ -63,27 +63,41 @@
 		-->
 
             <h2>Overview</h2>
-            Give a high-level overview of what you implemented in this homework.
-            Think about what you've built as a whole. Share your thoughts on
-            what interesting things you've learned from completing the homework.
+            <p>
+                In this homework I built a real-time cloth simulator from
+                scratch. I started with a grid of point masses connected by
+                structural, shearing, and bending springs, then implemented
+                damped Verlet integration to animate the cloth under gravity,
+                with a Provot length constraint to keep springs from
+                over-stretching. From there I added collision response against
+                spheres and planes, plus self-collision detection via spatial
+                hashing so the cloth doesn't clip through itself. Finally, I
+                wrote a bunch of GLSL shaders — diffuse, Blinn-Phong, texture
+                mapping, bump and displacement mapping, and a mirror reflection
+                shader using a cubemap. Honestly the most satisfying part was
+                seeing how much realistic behavior you can get from such simple
+                physics: a few spring types and one integrator produce cloth
+                that actually looks and feels right, and tricks like bump
+                mapping show how much you can fake with just a normal
+                perturbation and no extra geometry.
+            </p>
 
             <h2>Part 1: Masses and springs</h2>
             <p>
                 The cloth is represented as a grid of
                 <strong>point masses</strong> connected by three types of
-                springs, each encoding a different physical constraint. I built
-                the grid in row-major (x-axis) order: for a cloth with
+                springs. I built the grid in row-major order: for a cloth with
                 <em>num_width_points</em> &times;
                 <em>num_height_points</em> masses spanning a
-                <em>width</em> &times; <em>height</em> region, each mass at grid
-                index \((x, y)\) is placed at world position
+                <em>width</em> &times; <em>height</em> region, each mass at
+                index \((x, y)\) is placed at
             </p>
             <p style="text-align: center">
                 \[ \mathbf{p}_{x,y} = \left(\frac{x}{N_w - 1} \cdot w,\; 1,\;
                 \frac{y}{N_h - 1} \cdot h\right) \]
             </p>
             <p>
-                for a HORIZONTAL cloth (fixed \(y = 1\), varying over the
+                for a HORIZONTAL cloth (fixed \(y = 1\), laid flat in the
                 \(xz\)-plane), and
             </p>
             <p style="text-align: center">
@@ -91,38 +105,35 @@
                 \frac{y}{N_h - 1} \cdot h,\; \delta_z\right) \]
             </p>
             <p>
-                for a VERTICAL cloth (varying over the \(xy\)-plane), where
-                \(\delta_z \in [-0.001, 0.001]\) is a small random offset added
-                to break the perfect planarity and prevent degeneracy during
-                simulation.
+                for a VERTICAL cloth (hanging in the \(xy\)-plane), where
+                \(\delta_z \in [-0.001, 0.001]\) is a tiny random z-offset to
+                break perfect planarity so the simulation doesn't degenerate.
             </p>
             <p>
-                Once all point masses are placed, springs are added to encode
-                three constraint types:
+                After placing all masses, I added three types of springs:
             </p>
             <ul>
                 <li>
-                    <strong>Structural</strong> &mdash; connect each mass to its
-                    immediate left neighbor \((x-1, y)\) and the mass directly
-                    above it \((x, y-1)\). These resist compression and
-                    stretching along the cloth's primary axes.
+                    <strong>Structural</strong> &mdash; connect each mass to
+                    its immediate left \((x-1, y)\) and upper \((x, y-1)\)
+                    neighbors. These resist stretching along the cloth's main
+                    axes.
                 </li>
                 <li>
-                    <strong>Shearing</strong> &mdash; connect each mass to its
-                    diagonal upper-left \((x-1, y-1)\) and diagonal upper-right
-                    \((x+1, y-1)\) neighbors. These resist in-plane shear
-                    deformation.
+                    <strong>Shearing</strong> &mdash; connect each mass
+                    diagonally to \((x-1, y-1)\) and \((x+1, y-1)\). These
+                    resist in-plane shear.
                 </li>
                 <li>
                     <strong>Bending</strong> &mdash; connect each mass to the
-                    mass two steps to its left \((x-2, y)\) and two steps above
-                    \((x, y-2)\). These provide out-of-plane bending stiffness,
-                    acting over a longer range than structural springs.
+                    mass two steps left \((x-2, y)\) and two steps up \((x,
+                    y-2)\). These resist out-of-plane bending over a longer
+                    range than structural springs.
                 </li>
             </ul>
             <p>
-                Below are screenshots of <code>scene/pinned2.json</code> showing
-                the wireframe from an angled view.
+                Below are screenshots of <code>scene/pinned2.json</code> with
+                different spring constraints toggled on/off.
             </p>
 
             <div
@@ -143,18 +154,17 @@
                         <td style="text-align: center">
                             <img src="noshearing.png" width="400px" />
                             <figcaption>
-                                (1) No shearing constraints &mdash; only
-                                structural and bending springs visible. The grid
-                                shows clean horizontal and vertical connections
-                                with no diagonal lines.
+                                (1) No shearing &mdash; only structural and
+                                bending springs. Clean horizontal and vertical
+                                connections, no diagonals.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="onlyshearing.png" width="400px" />
                             <figcaption>
-                                (2) Only shearing constraints &mdash; only
-                                diagonal springs visible. The cloth wireframe
-                                shows an "X" pattern across each grid cell.
+                                (2) Only shearing &mdash; just the diagonal
+                                springs. The wireframe shows an "X" pattern
+                                across every grid cell.
                             </figcaption>
                         </td>
                     </tr>
@@ -163,10 +173,9 @@
                             <img src="allenabled.png" width="400px" />
                             <figcaption>
                                 (3) All constraints enabled &mdash; structural,
-                                shearing, and bending springs all present. The
-                                wireframe is the densest here, with both
-                                axis-aligned and diagonal connections visible
-                                across the full grid.
+                                shearing, and bending together. The wireframe
+                                is the densest here, with both axis-aligned and
+                                diagonal connections across the full grid.
                             </figcaption>
                         </td>
                     </tr>
@@ -175,17 +184,18 @@
 
             <h2>Part 2: Simulation via numerical integration</h2>
             <p>
-                To animate the cloth, I implemented three steps inside
+                To actually animate the cloth, I implemented three steps inside
                 <code>Cloth::simulate</code>:
             </p>
 
             <h3>Force accumulation</h3>
             <p>
                 At the start of each timestep all per-mass
-                <code>forces</code> vectors are reset. A single external force
-                \(\mathbf{F}_\text{ext} = m \sum_i \mathbf{a}_i\) is computed
-                from the external accelerations and applied uniformly to every
-                point mass. Spring correction forces follow Hooke's law:
+                <code>forces</code> vectors are zeroed out. I compute a single
+                external force \(\mathbf{F}_\text{ext} = m \sum_i
+                \mathbf{a}_i\) from the external accelerations and apply it
+                uniformly to every point mass. Then spring forces follow
+                Hooke's law:
             </p>
             <p style="text-align: center">
                 \[ \mathbf{F}_s = k_s \left(\|\mathbf{p}_b - \mathbf{p}_a\| -
@@ -193,11 +203,10 @@
                 \mathbf{p}_a}{\|\mathbf{p}_b - \mathbf{p}_a\|} \]
             </p>
             <p>
-                where \(l_0\) is the spring's rest length. The force is added to
-                mass \(a\) and subtracted from mass \(b\) (equal and opposite).
-                Bending springs use \(0.2 \cdot k_s\) so they are weaker than
-                structural/shearing springs, matching the physical intuition
-                that cloth resists stretching more than bending.
+                where \(l_0\) is the rest length. The force is added to mass
+                \(a\) and subtracted from mass \(b\). Bending springs use
+                \(0.2 \cdot k_s\) to make them weaker — cloth resists
+                stretching much more than bending.
             </p>
 
             <h3>Verlet integration</h3>
@@ -210,37 +219,39 @@
                 \mathbf{x}_{t-dt}) + \frac{\mathbf{F}}{m}\,dt^2 \]
             </p>
             <p>
-                where \(d = \texttt{damping}/100\). The term
-                \((1-d)(\mathbf{x}_t - \mathbf{x}_{t-dt})\) approximates \(v_t
-                \cdot dt\) while bleeding off a small fraction of kinetic energy
-                each step to model friction and heat loss.
+                where \(d = \texttt{damping}/100\). The \((1-d)(\mathbf{x}_t -
+                \mathbf{x}_{t-dt})\) term is basically velocity times dt with
+                a fraction bled off each step to model friction and energy
+                loss.
             </p>
 
             <h3>Provot length constraint</h3>
             <p>
-                After integration, each spring is checked: if its current length
-                exceeds \(1.1 \cdot l_0\), the two endpoint masses are nudged
-                toward each other along the spring direction to bring the length
-                back to \(1.1 \cdot l_0\). The correction is split evenly
-                between the two masses unless one is pinned, in which case the
-                full correction is applied to the free mass.
+                After integration, I check every spring: if it's stretched
+                beyond \(1.1 \times l_0\), I push the two endpoint masses
+                toward each other to bring it back to that limit. If one mass
+                is pinned, the full correction goes to the free one; otherwise
+                it's split evenly.
             </p>
 
             <h3>Parameter experiments (scene/pinned2.json)</h3>
 
             <h4>Spring constant \(k_s\)</h4>
             <p>
-                <strong>Low \(k_s\) (50 N/m):</strong> With very weak springs,
-                the cloth loses its structural rigidity. The sides bow strongly
-                inward toward each other, the top edge curves down sharply, and
-                the whole surface develops visible wrinkles and ripples at rest.
-                The cloth looks almost rubbery — unable to hold its own shape
-                against gravity.<br />
-                <strong>High \(k_s\) (50,000 N/m):</strong> With very stiff
-                springs, the cloth behaves almost like a rigid panel. It hangs
-                nearly flat and planar between the two pinned corners with
-                barely any visible curvature or droop — the spring forces are
-                strong enough to almost completely counteract gravity.
+                <strong>Low \(k_s\) (50 N/m):</strong> From the very start,
+                the cloth falls quickly and oscillates a lot — weak springs
+                can't pull it back to equilibrium effectively, so it swings
+                past where it should stop and keeps bouncing for a long time
+                before finally settling. At rest, the sides bow strongly
+                inward, the top edge curves sharply down, and the entire
+                surface is covered in wrinkles. It basically can't hold its
+                own shape against gravity.<br />
+                <strong>High \(k_s\) (50,000 N/m):</strong> With stiff
+                springs, the cloth behaves almost like a rigid panel from the
+                start — it falls without much oscillation, barely sways, and
+                settles quickly. At rest, it hangs nearly flat between the two
+                pinned corners with barely any droop. The spring forces are
+                strong enough to almost fully counteract gravity.
             </p>
             <div
                 style="
@@ -278,17 +289,19 @@
             <h4>Density</h4>
             <p>
                 <strong>Low density (1 g/cm²):</strong> The cloth is so light
-                that spring forces easily support it against gravity. At rest,
-                the surface is nearly completely flat with almost no visible
-                droop or curvature — it barely deforms from its initial
-                shape.<br />
+                that the springs easily support it during the entire fall — it
+                descends slowly, barely oscillates, and settles very quickly
+                into its resting shape. At rest the surface is almost
+                completely flat with barely any droop. Gravity hardly affects
+                it at all.<br />
                 <strong>High density (150 g/cm²):</strong> The heavier mass
-                means each point mass exerts a much larger gravitational force
-                on the springs. The sides bow outward and the bottom edge droops
-                noticeably more than at default density. The effect looks
-                similar to lowering \(k_s\), but the cause is different — the
-                springs are equally stiff, there is just more weight pulling
-                them down.
+                means gravity pulls much harder at every step. The cloth falls
+                faster, hits equilibrium with more momentum, and oscillates
+                noticeably more before settling. At rest, the sides bow
+                outward and the bottom droops significantly more than at
+                default density. It looks similar to low \(k_s\) but the
+                cause is different — the springs are just as stiff, there's
+                just more weight pulling on them.
             </p>
             <div
                 style="
@@ -315,8 +328,8 @@
                         <td style="text-align: center">
                             <img src="part2_high_density.png" width="400px" />
                             <figcaption>
-                                High density (150 g/cm²) &mdash; more pronounced
-                                side bowing and bottom droop.
+                                High density (150 g/cm²) &mdash; more
+                                pronounced side bowing and bottom droop.
                             </figcaption>
                         </td>
                     </tr>
@@ -325,18 +338,16 @@
 
             <h4>Damping</h4>
             <p>
-                <strong>Low damping (~0%):</strong> Almost no kinetic energy is
-                removed each timestep, so the cloth swings far past its
-                equilibrium position and keeps oscillating. The screenshot shows
-                the cloth mid-swing, rotated and twisted well past where it
-                should rest — it behaves like cloth in a vacuum with no air
-                resistance or friction.<br />
-                <strong>High damping (1%):</strong> A large fraction of velocity
-                is bled off each step, so the cloth descends in extreme slow
-                motion. The screenshot was taken well into the simulation yet
-                the cloth has barely moved from its initial flat position — it
-                is still nearly vertical and planar, only just beginning to
-                fall. It eventually settles without any oscillation.
+                <strong>Low damping (~0%):</strong> Almost no energy is
+                removed each step, so the cloth swings way past its
+                equilibrium and keeps oscillating. The screenshot shows it
+                mid-swing, rotated and twisted far past where it should settle
+                — like cloth in a vacuum with no air resistance.<br />
+                <strong>High damping (1%):</strong> A big chunk of velocity
+                gets removed each step, so the cloth descends in extremely
+                slow motion. The screenshot was taken well into the simulation
+                and the cloth has barely moved from its starting position —
+                it's still nearly vertical and flat, just beginning to fall.
             </p>
             <div
                 style="
@@ -390,12 +401,11 @@
                         <td style="text-align: center">
                             <img src="part2_pinned4_rest.png" width="400px" />
                             <figcaption>
-                                pinned4.json at its final resting state (default
-                                parameters: \(k_s = 5000\) N/m, density = 15
-                                g/cm², damping = 0.2%). All four corners are
-                                pinned; the cloth sags into a smooth
-                                hammock-like shape with the center lowest point
-                                forming a clean concave bowl.
+                                pinned4.json fully settled at default parameters
+                                (\(k_s = 5000\) N/m, density = 15 g/cm²,
+                                damping = 0.2%). All four corners are pinned and
+                                the cloth sags into a clean hammock shape with
+                                the center forming a smooth concave bowl.
                             </figcaption>
                         </td>
                     </tr>
@@ -408,21 +418,20 @@
 
             <h4>Sphere collisions</h4>
             <p>
-                For each point mass, I check whether its current position lies
-                inside the sphere (i.e. \(\|\mathbf{p} - \mathbf{o}\| \leq r\)).
-                If so, I compute the
+                For each point mass, I check if it's inside the sphere
+                (\(\|\mathbf{p} - \mathbf{o}\| \leq r\)). If so, I find the
                 <em>tangent point</em> — the point on the sphere's surface
-                directly along the ray from the sphere's origin through the
-                point mass's current position:
+                along the ray from the origin through the mass's current
+                position:
             </p>
             <p style="text-align: center">
                 \[ \mathbf{t} = \mathbf{o} + r \cdot \frac{\mathbf{p} -
                 \mathbf{o}}{\|\mathbf{p} - \mathbf{o}\|} \]
             </p>
             <p>
-                The correction vector brings <code>last_position</code> to the
-                tangent point, and the new position is that correction scaled
-                down by friction:
+                Then I compute a correction from <code>last_position</code> to
+                the tangent point and scale it down by friction to get the new
+                position:
             </p>
             <p style="text-align: center">
                 \[ \mathbf{p}_\text{new} = \mathbf{p}_\text{last} + (1 -
@@ -434,9 +443,8 @@
                 A point mass crosses the plane when
                 \(\text{sign}(\mathbf{d}_\text{last}) \neq
                 \text{sign}(\mathbf{d}_\text{curr})\), where \(\mathbf{d} =
-                (\mathbf{p} - \mathbf{q}) \cdot \hat{\mathbf{n}}\) is the signed
-                distance from the plane's reference point \(\mathbf{q}\) along
-                its normal \(\hat{\mathbf{n}}\). When a crossing is detected, I
+                (\mathbf{p} - \mathbf{q}) \cdot \hat{\mathbf{n}}\) is the
+                signed distance from the plane. When a crossing is detected, I
                 find the exact intersection by ray-casting from
                 <code>last_position</code> toward <code>position</code>:
             </p>
@@ -447,9 +455,10 @@
                 t\,(\mathbf{p} - \mathbf{p}_\text{last}) \]
             </p>
             <p>
-                The target is nudged a small <code>SURFACE_OFFSET</code> back
-                toward the original side of the plane, and the same
-                friction-scaled correction is applied:
+                The target gets nudged a small <code>SURFACE_OFFSET</code>
+                back toward the original side so the cloth doesn't z-fight
+                with the plane surface, and then the same friction-scaled
+                correction is applied:
             </p>
             <p style="text-align: center">
                 \[ \mathbf{p}_\text{new} = \mathbf{p}_\text{last} + (1 -
@@ -458,9 +467,9 @@
                 \mathbf{p}_\text{last}\bigr) \]
             </p>
             <p>
-                In <code>Cloth::simulate</code>, after Verlet integration, every
-                point mass is tested against every collision object by calling
-                <code>co->collide(pm)</code> in a nested loop.
+                Inside <code>Cloth::simulate</code>, after Verlet integration,
+                every point mass is tested against every collision object via
+                <code>co->collide(pm)</code>.
             </p>
 
             <h3>Sphere at different \(k_s\) values</h3>
@@ -483,18 +492,17 @@
                             <img src="part3_sphere_ks500.png" width="400px" />
                             <figcaption>
                                 \(k_s = 500\) N/m &mdash; very soft cloth wraps
-                                tightly around the entire sphere. Many long,
-                                thin folds hang nearly all the way to the
-                                ground, almost fully enveloping the sphere.
+                                tightly around the whole sphere. Long, thin
+                                folds hang nearly to the ground, almost fully
+                                enveloping it.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part3_sphere_ks5000.png" width="400px" />
                             <figcaption>
                                 \(k_s = 5000\) N/m (default) &mdash; the cloth
-                                drapes naturally, covering the top of the sphere
-                                and falling off the sides in smooth,
-                                well-defined folds that hang partway down.
+                                drapes naturally over the top and falls off the
+                                sides in smooth, well-defined folds.
                             </figcaption>
                         </td>
                     </tr>
@@ -503,21 +511,19 @@
                             <img src="part3_sphere_ks50000.png" width="400px" />
                             <figcaption>
                                 \(k_s = 50{,}000\) N/m &mdash; the stiff cloth
-                                barely conforms to the sphere. Rather than
-                                hanging down, the cloth extends outward nearly
-                                horizontally from the sphere's equator with very
-                                few folds, resting only lightly on the top
-                                surface.
+                                barely conforms to the sphere shape. It extends
+                                nearly horizontally from the equator with very
+                                few folds, resting only lightly on the top.
                             </figcaption>
                         </td>
                     </tr>
                 </table>
             </div>
             <p>
-                In short, lower \(k_s\) produces a limp cloth that wraps tightly
-                around the sphere with many long folds; higher \(k_s\) produces
-                a stiff cloth that resists bending and extends outward rather
-                than draping downward.
+                The pattern is intuitive: lower \(k_s\) gives you a limp cloth
+                that wraps tightly with lots of long folds, while higher
+                \(k_s\) gives you a stiff cloth that just kind of sits on top
+                and extends outward.
             </p>
 
             <h3>Cloth at rest on the plane</h3>
@@ -540,11 +546,9 @@
                             <img src="part3_plane_rest.png" width="400px" />
                             <figcaption>
                                 Cloth lying at rest on the plane
-                                (scene/plane.json, default parameters: \(k_s =
-                                5000\) N/m, density = 15 g/cm², damping = 0.2%).
-                                The cloth settles completely flat on the surface
-                                without passing through it, held up by the plane
-                                collision response.
+                                (scene/plane.json, default parameters). The
+                                cloth settles completely flat on the surface
+                                without passing through it.
                             </figcaption>
                         </td>
                     </tr>
@@ -555,22 +559,20 @@
 
             <h3>Implementation</h3>
             <p>
-                Checking every pair of point masses for self-collision is
-                \(O(n^2)\), which is too slow for real-time simulation. Instead,
-                I implemented spatial hashing to bring this down to
-                approximately \(O(n)\).
+                Naively checking every pair of point masses for self-collision
+                is \(O(n^2)\) — way too slow for real-time. Instead I used
+                spatial hashing to get it down to roughly \(O(n)\).
             </p>
 
             <h4>hash_position</h4>
             <p>
-                The 3D space is partitioned into axis-aligned boxes of
-                dimensions \(w \times h \times t\) where \(w = 3W/N_w\), \(h =
-                3H/N_h\), and \(t = \max(w, h)\). Each point mass's position is
-                mapped to the integer coordinates of its enclosing box via
-                \(\lfloor p_x/w \rfloor\), \(\lfloor p_y/h \rfloor\), \(\lfloor
-                p_z/t \rfloor\), and those three integers are combined into a
-                single float using large prime multipliers to minimize hash
-                collisions:
+                I partition 3D space into axis-aligned boxes of dimensions
+                \(w \times h \times t\) where \(w = 3W/N_w\), \(h =
+                3H/N_h\), and \(t = \max(w, h)\). Each point mass maps to the
+                integer coordinates of its box via \(\lfloor p_x/w
+                \rfloor\), \(\lfloor p_y/h \rfloor\), \(\lfloor p_z/t
+                \rfloor\), and those three integers get combined into one float
+                using large primes to minimize collisions:
             </p>
             <p style="text-align: center">
                 \[ \text{hash} = \lfloor p_x/w \rfloor \cdot 92837111 + \lfloor
@@ -580,22 +582,21 @@
 
             <h4>build_spatial_map</h4>
             <p>
-                At the start of each timestep the map is cleared and rebuilt by
-                iterating over every point mass, hashing its position, and
-                inserting a pointer to it into the corresponding bucket. This
-                takes \(O(n)\) time.
+                At the start of each timestep the map is cleared and rebuilt
+                by iterating over every mass, hashing its position, and
+                inserting a pointer to it into the corresponding bucket.
+                \(O(n)\) total.
             </p>
 
             <h4>self_collide</h4>
             <p>
-                For a given point mass, I look up its hash bucket and check each
-                candidate in the bucket (excluding the mass itself). If the
-                distance to a candidate is less than \(2 \cdot
-                \texttt{thickness}\), I compute a repulsive correction vector
-                that would push the mass far enough away to restore that minimum
-                separation. The average of all pairwise corrections is then
-                divided by
-                <code>simulation_steps</code> to keep position updates gradual:
+                For a given point mass, I look up its bucket and check each
+                candidate (skipping itself). If the distance to a candidate is
+                less than \(2 \times \texttt{thickness}\), I compute a
+                repulsive correction that pushes the mass far enough away to
+                restore minimum separation. The average correction across all
+                nearby candidates is divided by
+                <code>simulation_steps</code> to keep things gradual:
             </p>
             <p style="text-align: center">
                 \[ \Delta\mathbf{p} = \frac{1}{n \cdot \text{steps}} \sum_i
@@ -603,10 +604,9 @@
             </p>
             <p>
                 where \(\hat{d}_i\) is the unit vector from candidate \(i\)
-                toward the point mass.
-                <code>build_spatial_map</code> and <code>self_collide</code> are
-                called inside <code>Cloth::simulate</code> after Verlet
-                integration and before the Provot length constraint.
+                toward the mass. Both <code>build_spatial_map</code> and
+                <code>self_collide</code> are called after Verlet integration
+                and before the Provot constraint.
             </p>
 
             <h3>Cloth falling and folding on itself (default parameters)</h3>
@@ -628,19 +628,17 @@
                         <td style="text-align: center">
                             <img src="part4_fall_early.png" width="400px" />
                             <figcaption>
-                                Early — the bottom of the cloth has just hit the
+                                Early &mdash; the bottom has just hit the
                                 ground and the first crumple is forming while
-                                the rest of the cloth is still descending from
-                                above.
+                                the rest is still falling from above.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part4_fall_mid.png" width="400px" />
                             <figcaption>
-                                Mid-fall — multiple distinct layers are stacking
-                                on top of each other. Clear folding and
-                                self-collision is visible as the cloth collapses
-                                onto itself.
+                                Mid-fall &mdash; multiple distinct layers are
+                                stacking up. Clear folding and self-collision
+                                visible as the cloth collapses onto itself.
                             </figcaption>
                         </td>
                     </tr>
@@ -648,9 +646,10 @@
                         <td colspan="2" style="text-align: center">
                             <img src="part4_fall_rest.png" width="400px" />
                             <figcaption>
-                                Near rest — the cloth has fully settled into a
-                                flat, layered pile spread across the plane, with
-                                overlapping sections visible from the folding.
+                                Near rest &mdash; the cloth has settled into a
+                                flat layered pile across the plane, with
+                                overlapping sections from the folding clearly
+                                visible.
                             </figcaption>
                         </td>
                     </tr>
@@ -660,13 +659,13 @@
             <h3>Effect of varying density</h3>
             <p>
                 <strong>Low density (1 g/cm²):</strong> The cloth is light so
-                spring forces dominate over gravity. It falls slowly and settles
-                into just 2–3 wide, gentle pleats spread broadly across the
-                plane — barely crumpled, almost flat.<br />
-                <strong>High density (150 g/cm²):</strong> Gravity dominates and
-                the cloth falls faster and harder. It crumples into a more
+                spring forces win over gravity. It falls slowly and settles
+                into just a couple of wide, gentle pleats spread broadly across
+                the plane — barely crumpled, almost flat.<br />
+                <strong>High density (150 g/cm²):</strong> Gravity dominates
+                and the cloth falls faster and harder, crumpling into a more
                 compact pile with tighter, more numerous folds packed into a
-                smaller area on the ground.
+                smaller area.
             </p>
             <div
                 style="
@@ -687,7 +686,7 @@
                             <img src="part4_low_density.png" width="400px" />
                             <figcaption>
                                 Low density (1 g/cm²) &mdash; wide, gentle
-                                pleats spread flat across the plane.
+                                pleats spread flat.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
@@ -703,15 +702,13 @@
 
             <h3>Effect of varying \(k_s\)</h3>
             <p>
-                <strong>Low \(k_s\) (500 N/m):</strong> The weak springs offer
-                little resistance to bending, so the cloth folds loosely with
-                many overlapping layers spread across the ground. The folds are
-                numerous but relatively shallow.<br />
-                <strong>High \(k_s\) (50,000 N/m):</strong> The stiff springs
-                strongly resist bending, so the cloth maintains its structure as
-                it falls. It settles into very few, clean, broad folds — almost
-                like a folded board — forming a thick, structured pile rather
-                than a crumpled heap.
+                <strong>Low \(k_s\) (500 N/m):</strong> Weak springs offer
+                little resistance to bending. The cloth folds loosely with
+                many overlapping layers spread out across the ground.<br />
+                <strong>High \(k_s\) (50,000 N/m):</strong> Stiff springs
+                fight bending hard, so the cloth maintains structure as it
+                falls. It settles into just a few clean, broad folds — almost
+                like a folded board — rather than a crumpled heap.
             </p>
             <div
                 style="
@@ -750,58 +747,55 @@
 
             <h3>What is a shader program?</h3>
             <p>
-                A shader program is a small, isolated program that runs entirely
-                on the GPU in parallel across many threads simultaneously — one
-                thread per vertex or fragment. Unlike CPU code, each shader
-                invocation has no visibility into what other invocations are
-                doing; it just reads its inputs and writes a single output. This
-                parallelism is what makes real-time rendering possible.
+                A shader program is a small program that runs entirely on the
+                GPU, executing in parallel across many threads at once — one
+                per vertex or fragment. Each invocation is isolated: it just
+                reads its inputs and writes one output, with no idea what other
+                threads are doing. This parallelism is what makes real-time
+                rendering feasible.
             </p>
             <p>
-                A full shader pipeline pairs two shader types: a
-                <strong>vertex shader</strong> and a
-                <strong>fragment shader</strong>. The vertex shader runs once
-                per vertex and is responsible for transforming geometry — it
-                converts model-space positions and normals into world space and
-                clips them to screen space, writing the final screen-space
-                position to <code>gl_Position</code>. Any extra per-vertex data
-                (world-space position, normal, UV coordinates) is passed along
-                as <em>varying</em> outputs. After the vertex shader, the GPU
-                rasterizes the triangles and interpolates those varyings across
-                the surface using barycentric coordinates. The
-                <strong>fragment shader</strong> then runs once per rasterized
-                fragment, receiving the interpolated varyings and computing a
-                final color. Together they implement a full lighting and
-                material model: the vertex shader sets up the geometry, the
-                fragment shader evaluates the shading equation.
+                A full shader pipeline pairs two stages. The
+                <strong>vertex shader</strong> runs once per vertex and handles
+                geometry — it transforms positions and normals from model space
+                into world space and writes the final screen-space position to
+                <code>gl_Position</code>. Any extra per-vertex data (world
+                position, normal, UV) gets passed along as
+                <em>varying</em> outputs. The GPU then rasterizes the
+                triangles and interpolates those varyings across the surface
+                using barycentric coordinates. The
+                <strong>fragment shader</strong> runs once per rasterized
+                pixel, takes those interpolated varyings, and computes the
+                final color. The vertex shader sets up the geometry; the
+                fragment shader does the actual shading.
             </p>
 
             <h3>Blinn-Phong shading model</h3>
-            <p>Blinn-Phong decomposes light into three components:</p>
+            <p>Blinn-Phong breaks lighting into three components:</p>
             <ul>
                 <li>
-                    <strong>Ambient</strong> \(k_a I_a\) — a constant base color
-                    that approximates indirect, bounced light. It prevents
-                    surfaces facing away from the light from going completely
-                    black.
+                    <strong>Ambient</strong> \(k_a I_a\) &mdash; a constant
+                    base color that approximates indirect light bouncing around
+                    the scene. Keeps surfaces from going fully black even when
+                    they face away from the light.
                 </li>
                 <li>
                     <strong>Diffuse</strong> \(k_d (I/r^2) \max(0, \mathbf{n}
-                    \cdot \mathbf{l})\) — Lambertian scattering that depends
-                    only on the angle between the surface normal \(\mathbf{n}\)
-                    and the light direction \(\mathbf{l}\). It is
-                    view-independent.
+                    \cdot \mathbf{l})\) &mdash; Lambertian scattering based on
+                    the angle between the surface normal \(\mathbf{n}\) and
+                    light direction \(\mathbf{l}\). View-independent.
                 </li>
                 <li>
                     <strong>Specular</strong> \(k_s (I/r^2) \max(0, \mathbf{n}
-                    \cdot \mathbf{h})^p\) — a shiny highlight that depends on
-                    the half-vector \(\mathbf{h} = \text{normalize}(\mathbf{l} +
-                    \mathbf{v})\) between the light and view directions. The
-                    exponent \(p\) controls the tightness of the highlight.
+                    \cdot \mathbf{h})^p\) &mdash; the shiny highlight, driven
+                    by the half-vector \(\mathbf{h} =
+                    \text{normalize}(\mathbf{l} + \mathbf{v})\) between light
+                    and view. The exponent \(p\) controls how tight/narrow
+                    the highlight is.
                 </li>
             </ul>
             <p>
-                My values: \(k_a = 0.1\), \(k_d = 0.8\), \(k_s = 0.5\), \(I_a =
+                I used \(k_a = 0.1\), \(k_d = 0.8\), \(k_s = 0.5\), \(I_a =
                 (1,1,1)\), \(p = 64\).
             </p>
 
@@ -823,38 +817,39 @@
                         <td style="text-align: center">
                             <img src="part5_phong_ambient.png" width="400px" />
                             <figcaption>
-                                Ambient only — scene is nearly black since \(k_a
-                                = 0.1\) produces a very dim constant term. This
-                                is intentional; ambient alone barely lights the
-                                scene.
+                                Ambient only &mdash; nearly black since \(k_a =
+                                0.1\) gives a very dim constant term. Expected;
+                                ambient alone barely lights anything.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part5_phong_diffuse.png" width="400px" />
                             <figcaption>
-                                Diffuse only — smooth Lambertian gradient
-                                visible across the cloth and sphere, brighter
-                                where the surface faces the light.
+                                Diffuse only &mdash; smooth Lambertian gradient
+                                across the cloth and sphere, brighter where the
+                                surface faces the light.
                             </figcaption>
                         </td>
                     </tr>
                     <tr>
                         <td style="text-align: center">
-                            <img src="part5_phong_specular.png" width="400px" />
+                            <img
+                                src="part5_phong_specular.png"
+                                width="400px"
+                            />
                             <figcaption>
-                                Specular only — almost entirely black with a
-                                single tight bright highlight on the sphere
-                                where \(\mathbf{n} \cdot \mathbf{h}\) is
-                                maximized. \(p = 64\) keeps it narrow.
+                                Specular only &mdash; almost entirely black
+                                with a single tight bright highlight where
+                                \(\mathbf{n} \cdot \mathbf{h}\) peaks.
+                                \(p = 64\) keeps it narrow.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part5_phong_full.png" width="400px" />
                             <figcaption>
-                                Full Blinn-Phong — all three components
-                                combined. The sphere shows a clear specular
-                                highlight, smooth diffuse shading, and a
-                                barely-visible ambient floor.
+                                Full Blinn-Phong &mdash; all three combined.
+                                Clear specular highlight on the sphere, smooth
+                                diffuse shading, and the dim ambient floor.
                             </figcaption>
                         </td>
                     </tr>
@@ -863,10 +858,10 @@
 
             <h3>Texture mapping</h3>
             <p>
-                The texture shader simply samples <code>u_texture_1</code> at
+                The texture shader just samples <code>u_texture_1</code> at
                 the interpolated UV coordinate <code>v_uv</code> using GLSL's
-                built-in <code>texture()</code> function and outputs that color
-                directly.
+                <code>texture()</code> and outputs that color directly. No
+                lighting math at all.
             </p>
             <div
                 style="
@@ -887,8 +882,8 @@
                             <img src="part5_texture.png" width="400px" />
                             <figcaption>
                                 Custom texture mapped onto the cloth and sphere
-                                — a fabric/scale pattern sampled directly from
-                                UV coordinates with no lighting computation.
+                                &mdash; sampled straight from UV coordinates
+                                with no lighting computation.
                             </figcaption>
                         </td>
                     </tr>
@@ -897,15 +892,16 @@
 
             <h3>Bump and displacement mapping</h3>
             <p>
-                Both shaders use the same height map \(h(u,v)\) = the red
-                channel of
-                <code>u_texture_2</code> sampled at the fragment's UV
-                coordinates.
+                Both shaders use the same height map \(h(u,v)\) &mdash; the
+                red channel of <code>u_texture_2</code> sampled at the
+                fragment's UV. For all bump and displacement renders I used
+                <strong>texture_3.png</strong> (not the default
+                texture_2.png).
             </p>
             <p>
-                <strong>Bump mapping</strong> only modifies the shading normal —
-                geometry is unchanged. Finite differences give the height
-                gradient:
+                <strong>Bump mapping</strong> only touches the shading normal
+                — no geometry is moved. I use finite differences to get the
+                height gradient:
             </p>
             <p style="text-align: center">
                 \[ dU = (h(u + 1/w,\, v) - h(u,v)) \cdot k_h k_n, \quad dV =
@@ -913,15 +909,15 @@
             </p>
             <p>
                 The local-space normal \(\mathbf{n}_o = (-dU, -dV, 1)\) is
-                transformed to world space via the TBN matrix \([{\bf t},\, {\bf
-                b},\, {\bf n}]\) where \({\bf b} = {\bf n} \times {\bf t}\).
-                This perturbed normal is then used in Blinn-Phong shading.
+                transformed to world space via the TBN matrix \([{\bf t},\,
+                {\bf b},\, {\bf n}]\) where \({\bf b} = {\bf n} \times {\bf
+                t}\). This perturbed normal goes into Blinn-Phong shading.
             </p>
             <p>
-                <strong>Displacement mapping</strong> goes further — it actually
-                moves vertices along their model-space normal in the vertex
-                shader: \(\mathbf{p}' = \mathbf{p} + \mathbf{n} \cdot h(u,v)
-                \cdot k_h\). The fragment shader is identical to bump mapping.
+                <strong>Displacement mapping</strong> goes one step further —
+                it actually moves the vertices in the vertex shader: \(\mathbf{p}' =
+                \mathbf{p} + \mathbf{n} \cdot h(u,v) \cdot k_h\). The
+                fragment shader is otherwise identical to bump mapping.
             </p>
 
             <div
@@ -942,19 +938,19 @@
                         <td style="text-align: center">
                             <img src="part5_bump_cloth.png" width="400px" />
                             <figcaption>
-                                Bump mapping on the cloth (top-down view) —
-                                Phong shading with height-map perturbed normals.
-                                Surface detail is subtle at these parameter
-                                values (Normal=2, Height=0.1).
+                                Bump mapping on the cloth &mdash; Phong shading
+                                with height-map perturbed normals. Surface
+                                detail is subtle at these parameter values
+                                (Normal=2, Height=0.1).
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part5_bump_sphere.png" width="400px" />
                             <figcaption>
-                                Bump mapping on the sphere — normals respond to
-                                the height map giving the illusion of surface
-                                relief, while the silhouette remains perfectly
-                                smooth.
+                                Bump mapping on the sphere &mdash; normals
+                                respond to the height map giving the illusion
+                                of surface texture, while the silhouette stays
+                                perfectly smooth.
                             </figcaption>
                         </td>
                     </tr>
@@ -966,10 +962,10 @@
                             />
                             <figcaption>
                                 Displacement mapping on the sphere (Height=0.1)
-                                — vertex positions are physically moved along
-                                the normal by \(h(u,v) \cdot k_h\). At this
-                                scale the deformation is very subtle and the
-                                sphere appears nearly as smooth as the bump
+                                &mdash; vertex positions are physically moved
+                                along the normal by \(h(u,v) \cdot k_h\). At
+                                this scale the deformation is very subtle and
+                                the sphere looks nearly as smooth as the bump
                                 version.
                             </figcaption>
                         </td>
@@ -978,16 +974,35 @@
             </div>
 
             <p>
-                Bump mapping only perturbs normals — the sphere silhouette stays
-                perfectly smooth no matter what. Displacement mapping physically
-                moves vertices, so at larger height values the silhouette would
-                visibly deform. At Height=0.1 both shaders look nearly
-                identical, but the coarseness comparison below reveals the key
-                difference: bump mapping is resolution-independent while
-                displacement quality scales directly with vertex density.
+                The key conceptual difference: bump mapping only perturbs
+                normals so the silhouette is always perfectly smooth no matter
+                what. Displacement mapping physically moves vertices, so at
+                larger height values the silhouette visibly deforms to match
+                the height map. At Height=0.1 both look nearly identical, but
+                increasing the height would make displacement's geometry
+                changes very obvious while bump would stay smooth on the
+                outline regardless.
             </p>
 
             <h4>Effect of mesh coarseness on bump vs. displacement</h4>
+            <p>
+                This is where the real structural difference shows up. Bump
+                mapping works entirely in the fragment shader and never touches
+                vertices, so resolution has essentially no impact — a coarse
+                16×16 sphere and a dense 128×128 sphere produce nearly
+                identical bump results because normal perturbation happens
+                per-fragment regardless of vertex count. Displacement mapping
+                moves actual vertices in the vertex shader, so it's completely
+                bottlenecked by vertex density. With only 16×16 vertices, there
+                aren't enough sample points to represent the height map
+                faithfully — fine details get smeared out and you'd see blocky,
+                jagged silhouettes at larger height values. With 128×128
+                vertices the dense grid can follow the height map closely,
+                producing smoother and more detailed surface deformation. At
+                Height=0.1 both coarseness levels look similar because the
+                displacement is subtle, but the fundamental difference is clear:
+                bump doesn't care about resolution, displacement absolutely does.
+            </p>
             <div
                 style="
                     display: flex;
@@ -1006,18 +1021,18 @@
                         <td style="text-align: center">
                             <img src="part5_bump_coarse.png" width="400px" />
                             <figcaption>
-                                Bump, coarse mesh (-o 16 -a 16) — looks nearly
-                                identical to the fine mesh. Bump only perturbs
-                                normals in the fragment shader, so vertex count
-                                has almost no effect.
+                                Bump, coarse mesh (-o 16 -a 16) &mdash; looks
+                                nearly identical to the fine mesh. Bump works
+                                per-fragment and never touches vertices, so
+                                mesh resolution has almost no effect.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part5_bump_fine.png" width="400px" />
                             <figcaption>
-                                Bump, fine mesh (-o 128 -a 128) — virtually the
-                                same result as coarse, confirming bump mapping
-                                is mesh-resolution independent.
+                                Bump, fine mesh (-o 128 -a 128) &mdash;
+                                virtually the same result as the coarse version,
+                                confirming bump mapping is resolution-independent.
                             </figcaption>
                         </td>
                     </tr>
@@ -1028,12 +1043,11 @@
                                 width="400px"
                             />
                             <figcaption>
-                                Displacement, coarse mesh (-o 16 -a 16) — at
-                                Height=0.1 the displacement is too subtle to
-                                show visible blockiness, but with larger height
-                                values the low vertex count would produce jagged
-                                geometry that can't capture fine height map
-                                detail.
+                                Displacement, coarse mesh (-o 16 -a 16) &mdash;
+                                only 16×16 vertices to sample the height map.
+                                At Height=0.1 it's subtle, but at larger height
+                                values the sparse vertex grid would produce
+                                blocky, jagged geometry.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
@@ -1042,11 +1056,11 @@
                                 width="400px"
                             />
                             <figcaption>
-                                Displacement, fine mesh (-o 128 -a 128) — the
-                                dense vertex grid would faithfully follow the
-                                height map at higher height values; at
-                                Height=0.1 the result is visually similar to the
-                                coarse mesh.
+                                Displacement, fine mesh (-o 128 -a 128) &mdash;
+                                128×128 vertices faithfully track the height map.
+                                At Height=0.1 the difference is subtle, but this
+                                dense grid would produce much cleaner deformation
+                                at larger height values.
                             </figcaption>
                         </td>
                     </tr>
@@ -1055,12 +1069,13 @@
 
             <h3>Mirror shader</h3>
             <p>
-                The mirror shader computes the outgoing eye ray \(\mathbf{w}_o =
-                \text{normalize}(\mathbf{p} - \mathbf{c})\), reflects it across
-                the surface normal to get the incoming direction \(\mathbf{w}_i
-                = \text{reflect}(\mathbf{w}_o, \mathbf{n})\), and samples the
-                cubemap environment texture in that direction using
-                <code>texture(u_texture_cubemap, wi)</code>.
+                The mirror shader computes the outgoing eye ray \(\mathbf{w}_o
+                = \text{normalize}(\mathbf{p} - \mathbf{c})\), reflects it
+                across the surface normal to get the incoming direction
+                \(\mathbf{w}_i = \text{reflect}(\mathbf{w}_o, \mathbf{n})\),
+                and samples the environment cubemap in that direction with
+                <code>texture(u_texture_cubemap, wi)</code>. Simple but
+                surprisingly convincing.
             </p>
             <div
                 style="
@@ -1080,17 +1095,16 @@
                         <td style="text-align: center">
                             <img src="part5_mirror_cloth.png" width="400px" />
                             <figcaption>
-                                Mirror shader on the cloth — the flat surface
-                                reflects the cubemap environment (building and
-                                sky) perfectly, like a mirror laid on the
-                                ground.
+                                Mirror shader on the cloth &mdash; the flat
+                                surface reflects the cubemap environment like a
+                                mirror laid on the ground.
                             </figcaption>
                         </td>
                         <td style="text-align: center">
                             <img src="part5_mirror_sphere.png" width="400px" />
                             <figcaption>
-                                Mirror shader on the sphere — classic mirror
-                                ball effect, with the full environment cubemap
+                                Mirror shader on the sphere &mdash; classic
+                                mirror ball effect, with the full environment
                                 reflected across the curved surface.
                             </figcaption>
                         </td>
